@@ -133,7 +133,117 @@ export interface SubPaymentsTable {
   created_at: Generated<string>;
 }
 
+
+// ===== V2 =====
+export interface ExternalIdentitiesTable {
+  id: string;
+  seller_id: string;
+  provider: string;
+  open_id: string;
+  username: string | null;
+  avatar_url: string | null;
+  follower_count: Generated<number>;
+  likes_count: Generated<number>;
+  access_token_enc: string;
+  refresh_token_enc: string | null;
+  scopes: Generated<string>;
+  status: Generated<string>;
+  connected_at: Generated<string>;
+  synced_at: string | null;
+}
+
+export interface VideosTable {
+  id: string;
+  shop_id: string;
+  tiktok_video_id: string;
+  title: Generated<string>;
+  cover_url: string | null;
+  views: Generated<number>;
+  likes: Generated<number>;
+  published_at: string | null;
+  synced_at: Generated<string>;
+}
+
+export interface VideoProductsTable {
+  video_id: string;
+  product_id: string;
+}
+
+export interface ReviewsTable {
+  id: string;
+  order_id: string;
+  shop_id: string;
+  product_id: string;
+  token: string;
+  rating: number | null;
+  comment: string | null;
+  status: Generated<string>;
+  reply: string | null;
+  created_at: Generated<string>;
+  submitted_at: string | null;
+}
+
+export interface FollowersTable {
+  id: string;
+  shop_id: string;
+  phone: string;
+  opted_in_at: Generated<string>;
+  opted_out_at: string | null;
+}
+
+export interface AnnouncementsTable {
+  id: string;
+  shop_id: string;
+  body: string;
+  sent_at: Generated<string>;
+  sent_count: Generated<number>;
+  open_est: Generated<number>;
+  visits: Generated<number>;
+  orders: Generated<number>;
+}
+
+export interface DropsTable {
+  id: string;
+  shop_id: string;
+  title: string;
+  opens_at: string;
+  status: Generated<string>;
+  created_at: Generated<string>;
+}
+
+export interface DropProductsTable {
+  drop_id: string;
+  product_id: string;
+}
+
+export interface DropAlertsTable {
+  id: string;
+  drop_id: string;
+  phone: string;
+  created_at: Generated<string>;
+}
+
+export interface WebhookEventsTable {
+  id: string;
+  provider: string;
+  type: string;
+  dedup_key: string;
+  payload: string;
+  received_at: Generated<string>;
+  processed_at: string | null;
+}
+
 export interface DB {
+  external_identities: ExternalIdentitiesTable;
+  videos: VideosTable;
+  video_products: VideoProductsTable;
+  reviews: ReviewsTable;
+  followers: FollowersTable;
+  announcements: AnnouncementsTable;
+  drops: DropsTable;
+  drop_products: DropProductsTable;
+  drop_alerts: DropAlertsTable;
+  webhook_events: WebhookEventsTable;
   otp_codes: OtpCodesTable;
   sub_payments: SubPaymentsTable;
   sellers: SellersTable;

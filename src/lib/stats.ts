@@ -68,3 +68,58 @@ export async function statsBySource(shopId: string): Promise<SourceStat[]> {
   }
   return [...map.values()].sort((a, b) => b.orders - a.orders || b.visits - a.visits);
 }
+
+// ===== V2 : funnel vues → visites → commandes par vidéo (G4) =====
+
+export interface VideoFunnel {
+  videoId: string;
+  title: string;
+  views: number;
+  visits: number;
+  orders: number;
+  conversion: number; // commandes / vues, en %
+}
+
+export async function videoFunnel(shopId: string): Promise<VideoFunnel[]> {
+  const since = sinceIso(30);
+  const videos = await db
+    .selectFrom("videos")
+    .select(["id", "title", "views"])
+    .where("shop_id", "=", shopId)
+    .orderBy("published_at", "desc")
+    .execute();
+  if (videos.length === 0) return [];
+
+  const visits = await db
+    .selectFrom("visits")
+    .select(["source", db.fn.countAll<number>().as("n")])
+    .where("shop_id", "=", shopId)
+    .where("created_at", ">", since)
+    .groupBy("source")
+    .execute();
+  const orders = await db
+    .selectFrom("orders")
+    .select(["source", db.fn.countAll<number>().as("n")])
+    .where("shop_id", "=", shopId)
+    .where("created_at", ">", since)
+    .groupBy("source")
+    .execute();
+  const vMap = new Map(visits.map((v) => [v.source ?? "", Number(v.n)]));
+  const oMap = new Map(orders.map((o) => [o.source ?? "", Number(o.n)]));
+
+  return videos
+    .map((v) => {
+      const key = `v:${v.id}`;
+      const visitsN = vMap.get(key) ?? 0;
+      const ordersN = oMap.get(key) ?? 0;
+      return {
+        videoId: v.id,
+        title: v.title,
+        views: v.views,
+        visits: visitsN,
+        orders: ordersN,
+        conversion: v.views > 0 ? (ordersN / v.views) * 100 : 0,
+      };
+    })
+    .sort((a, b) => b.orders - a.orders || b.visits - a.visits);
+}

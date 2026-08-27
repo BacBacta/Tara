@@ -46,7 +46,34 @@ async function getData(slug: string, id: string) {
     .selectAll()
     .where("product_id", "=", product.id)
     .execute();
-  return { shop, product, variants };
+
+  // V2 : vidéo synchronisée taguée sur cet article (prioritaire sur video_url)
+  const taggedVideo = await db
+    .selectFrom("video_products")
+    .innerJoin("videos", "videos.id", "video_products.video_id")
+    .select(["videos.tiktok_video_id", "videos.title", "videos.views"])
+    .where("video_products.product_id", "=", product.id)
+    .where("videos.shop_id", "=", shop.id)
+    .orderBy("videos.published_at", "desc")
+    .executeTakeFirst();
+
+  // avis vérifiés publiés
+  const reviews = await db
+    .selectFrom("reviews")
+    .select(["id", "rating", "comment", "reply", "submitted_at"])
+    .where("product_id", "=", product.id)
+    .where("status", "=", "published")
+    .orderBy("submitted_at", "desc")
+    .limit(5)
+    .execute();
+  const ratingAgg = await db
+    .selectFrom("reviews")
+    .select([db.fn.avg<number>("rating").as("avg"), db.fn.countAll<number>().as("n")])
+    .where("product_id", "=", product.id)
+    .where("status", "=", "published")
+    .executeTakeFirst();
+
+  return { shop, product, variants, taggedVideo, reviews, ratingAgg };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -68,7 +95,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductPage({ params, searchParams }: Props) {
   const data = await getData(params.slug, params.id);
   if (!data || data.shop.suspended === 1) notFound();
-  const { shop, product, variants } = data;
+  const { shop, product, variants, taggedVideo, reviews, ratingAgg } = data;
   const lang: Lang = normalizeLang(shop.seller_lang);
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   const attribution = keepAttribution(searchParams);
@@ -89,7 +116,17 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const selected = typeof searchParams.variant === "string" ? searchParams.variant : null;
 
   const source = parseSource(searchParams);
-  const videoId = product.video_url ? tiktokVideoId(product.video_url) : null;
+  // V2 (vidéo synchronisée) prioritaire, sinon V1 (URL collée à la main)
+  const videoId = taggedVideo
+    ? taggedVideo.tiktok_video_id
+    : product.video_url
+      ? tiktokVideoId(product.video_url)
+      : null;
+  const videoCaption = taggedVideo
+    ? `« ${taggedVideo.title} » — ${taggedVideo.views.toLocaleString("fr-FR")} vues · synchronisée via l'API officielle`
+    : lang === "en"
+      ? "TikTok video embedded via the public oEmbed API."
+      : "Vidéo TikTok intégrée via l'API oEmbed publique.";
   const out = product.stock_state === "out";
 
   const variantHref = (value: string) => {
@@ -167,11 +204,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
             <TikTokEmbed
               videoId={videoId}
               label={t(lang, "shop.seenInVideos")}
-              caption={
-                lang === "en"
-                  ? "TikTok video embedded via the public oEmbed API."
-                  : "Vidéo TikTok intégrée via l'API oEmbed publique."
-              }
+              caption={videoCaption}
             />
           </div>
         )}
@@ -216,6 +249,33 @@ export default async function ProductPage({ params, searchParams }: Props) {
         <p className="mt-3 text-center text-[11px] text-gray-500">
           🔒 {t(lang, "shop.securePayment")}
         </p>
+
+        {reviews.length > 0 && (
+          <div className="mt-6 border-t border-gray-200 pt-4">
+            <p className="text-sm font-extrabold">
+              {lang === "en" ? "Verified reviews" : "Avis vérifiés"} ({Number(ratingAgg?.n ?? 0)}){" "}
+              <span className="text-[#E8A413]">
+                {"★".repeat(Math.round(Number(ratingAgg?.avg ?? 0)))} {Number(ratingAgg?.avg ?? 0).toFixed(1)}
+              </span>
+            </p>
+            <div className="mt-2 flex flex-col gap-2">
+              {reviews.map((r) => (
+                <div key={r.id} className="text-xs">
+                  <p className="text-[#E8A413]">{"★".repeat(r.rating ?? 0)}</p>
+                  {r.comment && <p className="text-gray-600">« {r.comment} »</p>}
+                  <p className="text-[10px] font-bold text-okgreen">
+                    ✓ {lang === "en" ? "Verified purchase" : "Achat vérifié"}
+                  </p>
+                  {r.reply && (
+                    <p className="mt-1 rounded-lg bg-sand px-2 py-1 text-[11px] text-gray-600">
+                      ↳ {shop.name} : {r.reply}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );

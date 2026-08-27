@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireShop } from "@/lib/guard";
-import { kpis, statsBySource } from "@/lib/stats";
+import { kpis, statsBySource, videoFunnel } from "@/lib/stats";
 import { isPaidActive, countActiveProducts, FREE_PRODUCT_LIMIT } from "@/lib/plan";
 import { fcfa } from "@/lib/format";
 import { db } from "@/lib/db";
@@ -18,6 +18,12 @@ export default async function AppHome({ searchParams }: { searchParams: { ok?: s
   const { shop } = await requireShop();
   const [day, week, month] = await Promise.all([kpis(shop.id, 1), kpis(shop.id, 7), kpis(shop.id, 30)]);
   const sources = await statsBySource(shop.id);
+  const funnel = await videoFunnel(shop.id);
+  const best = funnel[0];
+  const avgConv =
+    funnel.length > 0
+      ? funnel.reduce((a, f) => a + f.conversion, 0) / funnel.length
+      : 0;
   const lastOrders = await db
     .selectFrom("orders")
     .innerJoin("products", "products.id", "orders.product_id")
@@ -65,6 +71,15 @@ export default async function AppHome({ searchParams }: { searchParams: { ok?: s
       )}
 
       <Link
+        href="/app/tiktok"
+        className="mt-3 flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-xs font-bold"
+      >
+        <span className="text-base">🎵</span>
+        Mon compte TikTok — badge vérifié et vidéos
+        <span className="ml-auto text-indigo9">→</span>
+      </Link>
+
+      <Link
         href="/app/partage"
         className="mt-3 flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-xs font-bold"
       >
@@ -84,6 +99,52 @@ export default async function AppHome({ searchParams }: { searchParams: { ok?: s
           </div>
         ))}
       </div>
+
+      {/* V2 — funnel de la meilleure vidéo */}
+      {best && (
+        <>
+          <h2 className="mb-2 mt-6 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
+            Ta meilleure vidéo (30 j)
+          </h2>
+          <div className="rounded-2xl border border-gray-200 bg-white p-4">
+            <p className="text-sm font-bold">▶ {best.title}</p>
+            <div className="mt-2.5 flex items-stretch gap-1.5">
+              {[
+                ["Vues TikTok", best.views],
+                ["Visites boutique", best.visits],
+                ["Commandes", best.orders],
+              ].map(([label, value], i) => (
+                <div key={label as string} className="contents">
+                  {i > 0 && <span className="self-center text-gray-300">›</span>}
+                  <div className="flex-1 rounded-xl border border-gray-200 bg-sand p-2 text-center">
+                    <p className="text-sm font-extrabold tabular-nums">
+                      {Number(value).toLocaleString("fr-FR")}
+                    </p>
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-gray-400">
+                      {label}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-center text-[11px] font-extrabold text-okgreen">
+              Conversion vues → commandes : {best.conversion.toFixed(2)} %
+              {avgConv > 0 && (
+                <span className="font-bold text-gray-400">
+                  {" "}
+                  (moyenne {avgConv.toFixed(2)} %)
+                </span>
+              )}
+            </p>
+          </div>
+          <Link
+            href="/app/videos"
+            className="mt-2 block text-center text-[11px] font-extrabold text-indigo9"
+          >
+            Voir toutes mes vidéos et taguer mes articles →
+          </Link>
+        </>
+      )}
 
       {/* ventes par source / vidéo */}
       <h2 className="mb-2 mt-6 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">

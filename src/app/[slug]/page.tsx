@@ -7,6 +7,7 @@ import { t, normalizeLang, type Lang } from "@/lib/i18n";
 import { fcfa } from "@/lib/format";
 import { parseSource, recordVisit, keepAttribution } from "@/lib/track";
 import TikTokPixel from "@/components/TikTokPixel";
+import { getShopIdentity } from "@/lib/identities";
 
 // Vitrine publique — SSR, zéro JS client.
 
@@ -36,6 +37,22 @@ async function getShop(slug: string) {
     .orderBy("position", "asc")
     .execute();
 
+  // V2 : vidéos synchronisées avec au moins un article tagué
+  const taggedVideos = await db
+    .selectFrom("videos")
+    .innerJoin("video_products", "video_products.video_id", "videos.id")
+    .innerJoin("products", "products.id", "video_products.product_id")
+    .select([
+      "videos.id as video_id", "videos.title", "videos.views",
+      "products.id as product_id", "products.name as product_name",
+    ])
+    .where("videos.shop_id", "=", shop.id)
+    .where("products.removed", "=", 0)
+    .orderBy("videos.published_at", "desc")
+    .execute();
+
+  const identity = await getShopIdentity(shop.id);
+
   const sales = await db
     .selectFrom("orders")
     .select(db.fn.countAll<number>().as("n"))
@@ -43,7 +60,7 @@ async function getShop(slug: string) {
     .where("status", "in", ["paid", "delivered"])
     .executeTakeFirst();
 
-  return { shop, products, salesCount: Number(sales?.n ?? 0) };
+  return { shop, products, taggedVideos, identity, salesCount: Number(sales?.n ?? 0) };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -65,9 +82,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ShopPage({ params, searchParams }: Props) {
   const data = await getShop(params.slug);
   if (!data || data.shop.suspended === 1) notFound();
-  const { shop, products, salesCount } = data;
+  const { shop, products, taggedVideos, identity, salesCount } = data;
   const lang: Lang = normalizeLang(shop.seller_lang);
-  const videos = products.filter((p) => p.video_url);
+  // V2 prioritaire : vidéos synchronisées + articles tagués ; sinon V1 (oEmbed manuel)
+  const v2Videos = taggedVideos;
+  const videos = v2Videos.length > 0 ? [] : products.filter((p) => p.video_url);
   const attr = keepAttribution(searchParams);
 
   await recordVisit({
@@ -92,12 +111,41 @@ export default async function ShopPage({ params, searchParams }: Props) {
           🛍️
         </div>
         <h1 className="mt-6 text-lg font-extrabold">{shop.name}</h1>
+        {identity && (
+          <p className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-[11px] font-extrabold text-indigo9">
+            ✓ Compte TikTok vérifié · @{identity.username}
+          </p>
+        )}
         <p className="mt-1 text-xs text-gray-500">
           📍 {shop.city} · <b className="text-ink">{salesCount}</b> {t(lang, "shop.sales")}
         </p>
       </section>
 
       {/* vidéos taguées */}
+      {v2Videos.length > 0 && (
+        <>
+          <h2 className="mx-4 mb-2 mt-5 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
+            {t(lang, "shop.seenInVideos")}
+          </h2>
+          <div className="flex gap-2 overflow-x-auto px-3">
+            {v2Videos.map((v) => (
+              <Link
+                key={`${v.video_id}-${v.product_id}`}
+                href={`/${shop.slug}/p/${v.product_id}${attr ? attr + "&" : "?"}v=${v.video_id}`}
+                className="relative h-32 w-24 shrink-0 rounded-xl bg-gradient-to-br from-[#3B4784] to-[#222848] p-2 text-[10px] font-semibold text-white"
+              >
+                <span className="absolute right-2 top-2">▶</span>
+                <span className="absolute bottom-2 left-2 right-2 leading-tight">
+                  {v.product_name}
+                </span>
+                <span className="absolute bottom-9 left-2 text-[9px] opacity-70">
+                  {v.views.toLocaleString("fr-FR")} vues
+                </span>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
       {videos.length > 0 && (
         <>
           <h2 className="mx-4 mb-2 mt-5 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
