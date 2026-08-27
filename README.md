@@ -1,4 +1,4 @@
-# Bio-Shop — V1
+# Bio-Shop — V1 + V2
 
 La boutique des vendeuses TikTok du Cameroun : une mini-boutique web (PWA)
 accessible par un lien court placé dans la bio TikTok, des commandes qui
@@ -26,7 +26,7 @@ Back-office : `/admin`. Onboarding vendeuse : `/creer`.
 | `npm run build` / `npm start` | build et exécution en production |
 | `npm run db:migrate` | applique `migrations/*.sql` dans l'ordre |
 | `npm run db:seed` | jeu de données de démonstration (réinitialise les tables) |
-| `npm test` | tests Vitest (58 tests) |
+| `npm test` | tests Vitest (65 tests) |
 | `node scripts/create-admin.mjs <email> <mdp>` | crée/réinitialise un administrateur |
 
 ## Architecture
@@ -50,7 +50,7 @@ Back-office : `/admin`. Onboarding vendeuse : `/creer`.
 | Interface | Implémentation V1 | À brancher |
 |---|---|---|
 | `PaymentProvider` (`src/lib/payments.ts`) | `MockPaymentProvider` | Simiz / CamerPay / autre agrégateur MTN+Orange |
-| `OtpProvider` (`src/lib/otp.ts`) | `MockOtpProvider` (code journalisé) | BSP WhatsApp ou passerelle SMS locale |
+| `OtpProvider` (`src/lib/otp.ts`) | `MockOtpProvider` (code journalisé) | passerelle SMS locale (`OTP_PROVIDER=sms`) |
 
 Pour brancher l'agrégateur réel : écrire une classe qui implémente
 `PaymentProvider`, la retourner depuis `getPaymentProvider()` selon
@@ -138,7 +138,11 @@ NEXT_PUBLIC_BASE_URL="https://bioshop.cm"
 SESSION_SECRET="<32+ caractères aléatoires>"
 PAYMENT_WEBHOOK_SECRET="<secret partagé avec l'agrégateur>"
 PAYMENT_PROVIDER="simiz"          # plus jamais "mock" en production
-OTP_PROVIDER="whatsapp_bsp"
+OTP_PROVIDER="sms"                # passerelle SMS locale
+NOTIFY_PROVIDER="sms"             # mock | sms | whatsapp_cloud
+SMS_API_URL="<endpoint de la passerelle>"
+SMS_API_KEY="<cle>"
+SMS_SENDER_ID="BIOSHOP"
 PAYMENT_MOCK_AUTOCONFIRM=""       # DOIT rester vide en production
 NEXT_PUBLIC_TIKTOK_PIXEL_ID="<id du pixel>"
 ```
@@ -175,8 +179,8 @@ requête réseau n'est faite tant que les vrais fournisseurs ne sont pas branch�
 | G2 | Synchronisation des vidéos (Display API), tag vidéo↔articles, vitrine shoppable | idem |
 | G3 | Webhooks TikTok idempotents : nouvelle vidéo → notification, désautorisation → badge retiré sous 24 h | `TIKTOK_WEBHOOK_SECRET` |
 | G4 | Funnel vues → visites → commandes par vidéo | — |
-| G5 | Avis vérifiés à lien unique (commande livrée uniquement), réponse et modération | `NotifyProvider` |
-| G6 | Suivi de boutique (opt-in), annonces **4/mois maximum**, désabonnement signé en un clic | `NotifyProvider` (BSP WhatsApp) |
+| G5 | Avis vérifiés à lien unique (commande livrée uniquement), réponse et modération | `NotifyProvider` (SMS) |
+| G6 | Suivi de boutique (opt-in), annonces **4/mois maximum**, désabonnement signé en un clic | `NotifyProvider` (SMS) |
 | G7 | Drops : compte à rebours, aperçu verrouillé, alerte à l'ouverture, **stock atomique sans survente** | — |
 | G8 | Back-office : comptes connectés, supervision des webhooks, modération des avis | — |
 
@@ -191,12 +195,50 @@ requête réseau n'est faite tant que les vrais fournisseurs ne sont pas branch�
    Aucun écran, aucune route, aucun test à modifier.
 4. Déclarer l'URL de rappel des webhooks : `https://…/api/webhooks/tiktok`.
 
-### Brancher les notifications WhatsApp
+### Brancher les notifications — SMS d'abord, WhatsApp plus tard
 
-Ouvrir un compte **WhatsApp Business API** via un BSP, faire approuver les quatre
-templates (`new_video_tag`, `review_request`, `shop_announcement`, `drop_open`),
-puis implémenter `NotifyProvider` (`src/lib/notify.ts`). Les messages ne partent
-jamais du compte personnel de la vendeuse — c'est une exigence de conformité.
+Les notifications (OTP, demande d'avis, annonces, alertes de drop) passent par
+`NotifyProvider` (`src/lib/notify.ts`), qui embarque **trois implémentations
+prêtes** — on change de canal avec une variable d'environnement, sans toucher au
+reste du code.
+
+| `NOTIFY_PROVIDER` | Usage | Prérequis |
+|---|---|---|
+| `mock` | développement et démonstration | aucun |
+| **`sms`** | **production par défaut** | une passerelle SMS locale : `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER_ID` |
+| `whatsapp_cloud` | option de croissance, à fort volume | société vérifiée par Meta, numéro dédié, moyen de paiement international, templates approuvés |
+
+**Pourquoi le SMS par défaut.** Il atteint 100 % des téléphones (y compris les
+non-smartphones), ne demande ni vérification d'entreprise Meta ni carte bancaire
+internationale, et se facture souvent en FCFA. Il sert aussi l'OTP de connexion
+(`OTP_PROVIDER=sms` réutilise la même passerelle). Concrètement, il ne reste
+qu'à adapter le corps de la requête HTTP au format de la passerelle retenue,
+dans `SmsNotifyProvider` — une dizaine de lignes.
+
+**Ce qui ne nécessite aucune passerelle.** Deux des quatre notifications s'en
+passent très bien : prévenir la vendeuse d'une nouvelle vidéo se fait par une
+bannière dans son tableau de bord, et la demande d'avis peut partir de sa propre
+conversation WhatsApp via un lien `wa.me` pré-rempli — elle discute déjà avec la
+cliente. Seuls les envois en masse (annonces, alertes de drop) demandent
+réellement une passerelle.
+
+**Quand passer à WhatsApp Cloud.** Quand le volume rend le SMS coûteux : la
+Cloud API est moins chère au message et bien mieux lue. L'onboarding se fait
+**directement chez Meta, sans BSP obligatoire** — un BSP n'apporte qu'un
+accompagnement et parfois un paiement en monnaie locale. Attention aux
+catégories de templates (`TEMPLATE_CATEGORY` dans le code) : `otp` en
+*authentication*, `new_video_tag` et `review_request` en *utility*,
+`shop_announcement` et `drop_open` en *marketing*. Envoyer du marketing sous une
+catégorie utility expose à une suspension du compte. Les listes de diffusion
+natives de WhatsApp ne sont pas une alternative : plafonnées à 256 contacts,
+elles ne délivrent qu'aux personnes ayant enregistré le numéro de la vendeuse.
+
+### Ordre de priorité des branchements
+
+1. **Agrégateur Mobile Money** — indispensable : sans lui, pas d'encaissement.
+2. **Passerelle SMS locale** — débloque l'OTP réel et les annonces, sans dossier.
+3. *(optionnel)* **App TikTok** — badge vérifié, synchronisation, webhooks.
+4. *(croissance)* **WhatsApp Cloud API**, puis le pixel publicitaire (V3).
 
 ### Points d'attention V2
 

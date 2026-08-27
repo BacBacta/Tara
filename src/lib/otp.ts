@@ -23,8 +23,27 @@ class MockOtpProvider implements OtpProvider {
   }
 }
 
+/**
+ * OTP par SMS — même passerelle locale que les notifications.
+ * Le SMS est ici le bon canal : il atteint tous les téléphones et ne dépend
+ * d'aucune vérification Meta.
+ */
+class SmsOtpProvider implements OtpProvider {
+  readonly name = "sms";
+  async send(phone: string, code: string): Promise<void> {
+    const { getNotifyProvider } = await import("./notify");
+    await getNotifyProvider().send({
+      phone,
+      template: "otp",
+      body: `Ton code Bio-Shop : ${code} (valable 10 minutes).`,
+    });
+  }
+}
+
 export function getOtpProvider(): OtpProvider {
-  return new MockOtpProvider();
+  return process.env.OTP_PROVIDER === "sms"
+    ? new SmsOtpProvider()
+    : new MockOtpProvider();
 }
 
 function hashCode(code: string): string {
