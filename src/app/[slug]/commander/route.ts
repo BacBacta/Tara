@@ -41,6 +41,14 @@ export async function POST(
   }
 
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+
+  // action=pay → parcours paiement MoMo au lieu de WhatsApp
+  if (form.get("action") === "pay") {
+    return NextResponse.redirect(
+      `${base}/${shop.slug}/payer/${order.id}`,
+      303
+    );
+  }
   const lang = normalizeLang(shop.seller_lang);
   const href = waLink(
     shop.seller_phone,

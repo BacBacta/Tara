@@ -191,9 +191,19 @@ export default async function ProductPage({ params, searchParams }: Props) {
             </form>
           )}
           {!out && shop.momo_enabled === 1 && (
-            <span className="rounded-2xl bg-mango/40 px-5 py-4 text-center text-sm font-extrabold text-[#3A2A00] opacity-70">
-              💰 {t(lang, "shop.payMomo")} — Phase 3
-            </span>
+            <form method="post" action={`/${shop.slug}/commander`}>
+              <input type="hidden" name="product" value={product.id} />
+              {selected && <input type="hidden" name="variant" value={selected} />}
+              <input type="hidden" name="qty" value="1" />
+              <input type="hidden" name="source" value={source} />
+              <input type="hidden" name="action" value="pay" />
+              <button
+                type="submit"
+                className="w-full rounded-2xl bg-mango px-5 py-4 text-center text-sm font-extrabold text-[#3A2A00]"
+              >
+                💰 {t(lang, "shop.payMomo")}
+              </button>
+            </form>
           )}
           {out && (
             <span className="rounded-2xl bg-gray-100 px-5 py-4 text-center text-sm font-extrabold text-gray-400">
