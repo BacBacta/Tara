@@ -3,6 +3,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { fcfa } from "@/lib/format";
 import { normalizeLang } from "@/lib/i18n";
+import TikTokPixel from "@/components/TikTokPixel";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export default async function ConfirmationPage({ params }: Props) {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-3 px-6 text-center">
+      <TikTokPixel event="Purchase" value={order.amount_fcfa} />
       <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 text-4xl text-okgreen">
         ✓
       </div>

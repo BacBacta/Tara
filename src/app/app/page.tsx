@@ -64,6 +64,15 @@ export default async function AppHome({ searchParams }: { searchParams: { ok?: s
         </Link>
       )}
 
+      <Link
+        href="/app/partage"
+        className="mt-3 flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-xs font-bold"
+      >
+        <span className="text-base">🔗</span>
+        Kit de partage — lien, QR code et texte à épingler
+        <span className="ml-auto text-indigo9">→</span>
+      </Link>
+
       {/* KPIs */}
       <div className="mt-4 grid grid-cols-3 gap-2">
         {cells.map(([labelTxt, k]) => (

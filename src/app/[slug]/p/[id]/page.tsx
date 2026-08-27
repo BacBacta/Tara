@@ -8,6 +8,7 @@ import { fcfa } from "@/lib/format";
 import { parseSource, recordVisit, keepAttribution } from "@/lib/track";
 import { tiktokVideoId } from "@/lib/whatsapp";
 import TikTokEmbed from "@/components/TikTokEmbed";
+import TikTokPixel from "@/components/TikTokPixel";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +102,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
 
   return (
     <main className="mx-auto max-w-md pb-10">
+      <TikTokPixel />
       {/* barre retour */}
       <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-gray-200 bg-sand px-4 py-3">
         <Link

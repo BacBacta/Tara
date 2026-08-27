@@ -1,5 +1,6 @@
 // Seed réaliste : 2 boutiques de démo, articles, variantes, commandes, visites.
 import Database from "better-sqlite3";
+import { randomBytes, scryptSync } from "node:crypto";
 
 const url = process.env.DATABASE_URL ?? "file:./dev.db";
 const db = new Database(url.replace(/^file:/, ""));
@@ -84,7 +85,9 @@ for (let i = 0; i < 40; i++) {
     user_agent: "seed", created_at: daysAgo(i % 7) });
 }
 
+const salt = randomBytes(16).toString("hex");
+const adminHash = `${salt}:${scryptSync("bioshop2026", salt, 64).toString("hex")}`;
 ins("admin_users", { id: id(), email: "admin@bioshop.cm",
-  password_hash: "CHANGE_ME_ON_FIRST_LOGIN", role: "admin" });
+  password_hash: adminHash, role: "admin" });
 
 console.log("Seed OK — boutiques : nadia-friperie-237 et kev-sneakers");

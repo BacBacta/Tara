@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { t, normalizeLang, type Lang } from "@/lib/i18n";
 import { fcfa } from "@/lib/format";
 import { parseSource, recordVisit, keepAttribution } from "@/lib/track";
+import TikTokPixel from "@/components/TikTokPixel";
 
 // Vitrine publique — SSR, zéro JS client.
 
@@ -77,6 +78,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
 
   return (
     <main className="mx-auto max-w-md pb-8">
+      <TikTokPixel />
       {/* bannière */}
       <div
         className="h-28"
