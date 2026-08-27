@@ -88,6 +88,10 @@ export interface SubscriptionsTable {
   period_start: string;
   period_end: string;
   payment_id: string | null;
+  origin: Generated<string>; // aggregator | manual | offered
+  payment_ref: string | null; // référence MoMo saisie à la main
+  note: string | null;
+  activated_by: string | null; // e-mail de l'admin qui a activé
   created_at: Generated<string>;
 }
 

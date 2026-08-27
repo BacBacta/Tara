@@ -1,7 +1,7 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { db, newId } from "./db";
+import { writeAudit } from "./audit";
 
 const COOKIE = "bs_admin";
 const TTL_S = 60 * 60 * 8; // 8 h
@@ -76,8 +76,5 @@ export const ADMIN_COOKIE = COOKIE;
 
 /** Journalise toute action d'administration (traçabilité). */
 export async function audit(actor: string, action: string, target: string) {
-  await db
-    .insertInto("audit_log")
-    .values({ id: newId(), actor, action, target })
-    .execute();
+  await writeAudit(actor, action, target);
 }

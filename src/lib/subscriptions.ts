@@ -3,6 +3,45 @@ import type { DB } from "./schema";
 import { db as defaultDb, newId } from "./db";
 import { getPaymentProvider, type Operator } from "./payments";
 import { PAID_PLAN_DAYS, PAID_PLAN_PRICE_FCFA, isPaidActive } from "./plan";
+import { writeAudit } from "./audit";
+
+/** Provenance d'une période d'abonnement. */
+export const SUB_ORIGINS = ["aggregator", "manual", "offered"] as const;
+export type SubOrigin = (typeof SUB_ORIGINS)[number];
+
+/** Une période « offerte » n'est pas du revenu. */
+export function isRevenue(origin: string): boolean {
+  return origin === "aggregator" || origin === "manual";
+}
+
+/**
+ * Période suivante : une prolongation démarre à l'expiration en cours,
+ * pas à aujourd'hui — sinon la vendeuse perdrait les jours déjà payés.
+ * Chemin unique, partagé par l'agrégateur et l'activation manuelle.
+ */
+export function nextPeriod(
+  shop: { plan: string; plan_expires_at: string | null },
+  months = 1
+): { start: Date; end: Date } {
+  const start = isPaidActive(shop)
+    ? new Date(shop.plan_expires_at as string)
+    : new Date();
+  const end = new Date(start.getTime() + months * PAID_PLAN_DAYS * 86400_000);
+  return { start, end };
+}
+
+/** Applique une période à la boutique. Seul endroit qui touche shops.plan. */
+async function applyPeriodToShop(
+  shopId: string,
+  periodEnd: string,
+  dbi: Kysely<DB>
+): Promise<void> {
+  await dbi
+    .updateTable("shops")
+    .set({ plan: "paid", plan_expires_at: periodEnd })
+    .where("id", "=", shopId)
+    .execute();
+}
 
 /** Initie le paiement d'un mois d'abonnement. */
 export async function initiateSubscription(
@@ -17,11 +56,7 @@ export async function initiateSubscription(
     .where("id", "=", shopId)
     .executeTakeFirstOrThrow();
 
-  // prolongation : la nouvelle période démarre à l'expiration si encore active
-  const start = isPaidActive(shop)
-    ? new Date(shop.plan_expires_at as string)
-    : new Date();
-  const end = new Date(start.getTime() + PAID_PLAN_DAYS * 86400_000);
+  const { start, end } = nextPeriod(shop);
 
   const subscriptionId = newId();
   await dbi
@@ -93,11 +128,7 @@ export async function processSubscriptionWebhook(
       .set({ payment_id: pay.id })
       .where("id", "=", sub.id)
       .execute();
-    await dbi
-      .updateTable("shops")
-      .set({ plan: "paid", plan_expires_at: sub.period_end })
-      .where("id", "=", sub.shop_id)
-      .execute();
+    await applyPeriodToShop(sub.shop_id, sub.period_end, dbi);
   }
   return { applied: true };
 }
@@ -116,4 +147,110 @@ export async function latestPendingSubPayment(
     .where("subscriptions.shop_id", "=", shopId)
     .orderBy("sub_payments.created_at", "desc")
     .executeTakeFirst();
+}
+
+/**
+ * Lot 2 — activation manuelle depuis le back-office.
+ *
+ * MIKE reçoit les 3 000 F sur son MoMo personnel et active ici, en saisissant
+ * la référence de la transaction. Réutilise exactement le même calcul de
+ * période et la même écriture sur shops que le chemin agrégateur.
+ *
+ * Idempotence : une même référence de paiement ne crédite jamais deux fois
+ * la même boutique (index unique partiel sur shop_id + payment_ref).
+ * Une période « offerte » ne compte pas comme revenu et vaut 0 F.
+ */
+export async function grantSubscription(
+  opts: {
+    shopId: string;
+    months: number;
+    origin: Exclude<SubOrigin, "aggregator">;
+    paymentRef?: string | null;
+    note?: string | null;
+    actor: string;
+  },
+  dbi: Kysely<DB> = defaultDb
+): Promise<
+  | { applied: true; expiresAt: string; amount: number }
+  | { applied: false; reason: "duplicate" | "shop_not_found" | "missing_ref" }
+> {
+  const { shopId, months, origin, actor } = opts;
+  const paymentRef = opts.paymentRef?.trim() || null;
+
+  // Un encaissement manuel sans référence serait intraçable.
+  if (origin === "manual" && !paymentRef) {
+    return { applied: false, reason: "missing_ref" };
+  }
+
+  const shop = await dbi
+    .selectFrom("shops")
+    .select(["id", "plan", "plan_expires_at"])
+    .where("id", "=", shopId)
+    .executeTakeFirst();
+  if (!shop) return { applied: false, reason: "shop_not_found" };
+
+  if (paymentRef) {
+    const seen = await dbi
+      .selectFrom("subscriptions")
+      .select("id")
+      .where("shop_id", "=", shopId)
+      .where("payment_ref", "=", paymentRef)
+      .executeTakeFirst();
+    if (seen) return { applied: false, reason: "duplicate" };
+  }
+
+  const { start, end } = nextPeriod(shop, months);
+  const amount = origin === "offered" ? 0 : PAID_PLAN_PRICE_FCFA * months;
+  const periodEnd = end.toISOString();
+
+  await dbi
+    .insertInto("subscriptions")
+    .values({
+      id: newId(),
+      shop_id: shopId,
+      plan: "paid",
+      amount,
+      period_start: start.toISOString(),
+      period_end: periodEnd,
+      payment_id: null,
+      origin,
+      payment_ref: paymentRef,
+      note: opts.note?.trim() || null,
+      activated_by: actor,
+    })
+    .execute();
+
+  await applyPeriodToShop(shopId, periodEnd, dbi);
+
+  // Traçabilité : qui, quand (at), quelle boutique, quelle référence.
+  await writeAudit(
+    actor,
+    origin === "offered" ? "grant_offered" : "grant_paid",
+    `${shopId} · ${months} mois · ${paymentRef ?? "sans référence"}`,
+    dbi
+  );
+
+  return { applied: true, expiresAt: periodEnd, amount };
+}
+
+/** Dernière période connue de chaque boutique (pour l'écran admin). */
+export async function latestSubscriptionByShop(
+  dbi: Kysely<DB> = defaultDb
+): Promise<Map<string, { origin: string; period_end: string; payment_ref: string | null }>> {
+  const rows = await dbi
+    .selectFrom("subscriptions")
+    .select(["shop_id", "origin", "period_end", "payment_ref"])
+    .orderBy("period_end", "desc")
+    .execute();
+  const map = new Map<string, { origin: string; period_end: string; payment_ref: string | null }>();
+  for (const r of rows) {
+    if (!map.has(r.shop_id)) {
+      map.set(r.shop_id, {
+        origin: r.origin,
+        period_end: r.period_end,
+        payment_ref: r.payment_ref,
+      });
+    }
+  }
+  return map;
 }
