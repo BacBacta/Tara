@@ -203,22 +203,40 @@ export async function grantSubscription(
   const amount = origin === "offered" ? 0 : PAID_PLAN_PRICE_FCFA * months;
   const periodEnd = end.toISOString();
 
-  await dbi
-    .insertInto("subscriptions")
-    .values({
-      id: newId(),
-      shop_id: shopId,
-      plan: "paid",
-      amount,
-      period_start: start.toISOString(),
-      period_end: periodEnd,
-      payment_id: null,
-      origin,
-      payment_ref: paymentRef,
-      note: opts.note?.trim() || null,
-      activated_by: actor,
-    })
-    .execute();
+  try {
+    await dbi
+      .insertInto("subscriptions")
+      .values({
+        id: newId(),
+        shop_id: shopId,
+        plan: "paid",
+        amount,
+        period_start: start.toISOString(),
+        period_end: periodEnd,
+        payment_id: null,
+        origin,
+        payment_ref: paymentRef,
+        note: opts.note?.trim() || null,
+        activated_by: actor,
+      })
+      .execute();
+  } catch (e) {
+    // Course : deux activations simultanées avec la même référence passent
+    // toutes deux le SELECT ci-dessus, et l'index unique arrête la seconde.
+    // C'est la base qui garde, pas le code — on se contente de traduire.
+    // (Hors transaction explicite : sur PostgreSQL, une violation à
+    // l'intérieur d'une transaction l'avorterait et ce SELECT échouerait.)
+    if (paymentRef) {
+      const seen = await dbi
+        .selectFrom("subscriptions")
+        .select("id")
+        .where("shop_id", "=", shopId)
+        .where("payment_ref", "=", paymentRef)
+        .executeTakeFirst();
+      if (seen) return { applied: false, reason: "duplicate" };
+    }
+    throw e;
+  }
 
   await applyPeriodToShop(shopId, periodEnd, dbi);
 

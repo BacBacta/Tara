@@ -74,17 +74,78 @@ Pour brancher l'agrégateur réel : écrire une classe qui implémente
 ### 1. Base de données
 
 ```bash
-sudo apt install postgresql
+sudo apt install postgresql fonts-dejavu-core
 sudo -u postgres createuser tara -P
 sudo -u postgres createdb tara -O tara
 ```
 
+> `fonts-dejavu-core` n'est pas décoratif : les images d'aperçu de partage
+> (Open Graph) sont rendues par sharp, qui s'appuie sur les polices du système.
+> Sans elles, les aperçus partagés sur WhatsApp seraient des aplats de couleur
+> sans texte.
+
 Dans `.env` : `DATABASE_URL="postgresql://tara:MOTDEPASSE@localhost:5432/tara"`.
 
-> Le code de `src/lib/db.ts` utilise le dialecte SQLite. Pour PostgreSQL :
-> `npm i pg`, remplacer `SqliteDialect` par `PostgresDialect` (`new Pool({ connectionString })`),
-> et convertir les `INTEGER 0/1` de `migrations/001_init.sql` en `BOOLEAN`.
-> Les requêtes Kysely restent identiques.
+**Aucune modification de code n'est nécessaire.** Le dialecte se déduit de
+`DATABASE_URL` (`src/lib/db.ts`) : une URL `postgres://` ou `postgresql://`
+sélectionne PostgreSQL, tout le reste SQLite. `npm run db:migrate` traduit les
+migrations à la volée (`scripts/sql-portable.mjs`) et les applique dans une
+transaction — sur PostgreSQL le DDL est transactionnel, donc une migration
+échouée ne laisse jamais un schéma à moitié appliqué.
+
+> **Ne convertissez pas les colonnes `INTEGER 0/1` en `BOOLEAN`.** Le code
+> métier les compare à `1` (`shop.momo_enabled === 1`) ; le passage en booléen
+> casserait ces comparaisons dans toute l'application.
+
+> Les dates sont stockées en **TEXT** au format `YYYY-MM-DD HH:MM:SS` (UTC),
+> identique sur les deux moteurs, parce que le code compare les dates comme des
+> chaînes. C'est pour cela que la traduction utilise `to_char(...)` et non
+> `CURRENT_TIMESTAMP`, qui ajouterait fraction de seconde et fuseau.
+
+#### Bascule depuis un SQLite existant
+
+À faire **avant** l'ouverture au public, jamais après :
+
+```bash
+# 1. arrêter l'application (plus aucune écriture pendant la bascule)
+sudo systemctl stop tara
+
+# 2. créer le schéma sur PostgreSQL
+DATABASE_URL="postgresql://tara:MOTDEPASSE@localhost:5432/tara" npm run db:migrate
+
+# 3. transférer les données existantes (pgloader gère les types SQLite)
+sudo apt install pgloader
+pgloader ./dev.db postgresql://tara:MOTDEPASSE@localhost:5432/tara
+
+# 4. vérifier que les compteurs concordent, table par table
+sqlite3 dev.db "select 'shops', count(*) from shops union all select 'orders', count(*) from orders;"
+psql -U tara -d tara -c "select 'shops', count(*) from shops union all select 'orders', count(*) from orders;"
+
+# 5. basculer DATABASE_URL dans .env, puis redémarrer
+sudo systemctl start tara
+```
+
+Gardez le fichier `dev.db` d'origine au moins un mois : c'est votre seul
+retour arrière.
+
+#### Vérifier les invariants sur votre PostgreSQL
+
+Les tests de concurrence tournent contre un vrai serveur. Sur une base
+**jetable** (ils effacent le schéma) :
+
+```bash
+sudo -u postgres createdb tara_test -O tara
+TEST_DATABASE_URL="postgresql://tara:MOTDEPASSE@localhost:5432/tara_test" npm test
+```
+
+Ils prouvent, sur PostgreSQL et non sur SQLite : 10 commandes simultanées sur
+un stock de 3 donnent exactement 3 succès (R4), un webhook rejoué — y compris
+en parallèle — n'a qu'un seul effet (R3), et deux activations d'abonnement
+concurrentes avec la même référence n'en créditent qu'une.
+
+Sans `TEST_DATABASE_URL`, ces tests sont **ignorés** et le disent : un test de
+concurrence qui ne tournerait que sur SQLite ne prouverait rien, SQLite
+sérialisant les écritures avec un verrou global.
 
 ### 2. Application
 
@@ -155,12 +216,27 @@ NEXT_PUBLIC_TIKTOK_PIXEL_ID="<id du pixel>"
 
 ```bash
 # /etc/cron.daily/tara-backup
-pg_dump -U tara tara | gzip > /var/backups/tara-$(date +%F).sql.gz
-find /var/backups -name 'tara-*.sql.gz' -mtime +30 -delete
+set -euo pipefail
+pg_dump -U tara --format=custom tara > /var/backups/tara-$(date +%F).dump
+find /var/backups -name 'tara-*.dump' -mtime +30 -delete
 rsync -a /var/www/tara/public/uploads/ /var/backups/uploads/
 ```
 
-Tester la **restauration** au moins une fois avant la mise en production.
+Le format `custom` (`-Fc`) permet une restauration sélective, table par table,
+et se restaure avec `pg_restore` :
+
+```bash
+# restauration complète sur une base vierge
+sudo -u postgres createdb tara_restore -O tara
+pg_restore -U tara -d tara_restore /var/backups/tara-2026-08-27.dump
+
+# vérifier avant de basculer
+psql -U tara -d tara_restore -c "select count(*) from orders;"
+```
+
+**Testez la restauration au moins une fois avant la mise en production.** Une
+sauvegarde jamais restaurée n'est pas une sauvegarde. C'est un point de la
+checklist de pré-vol (lot 6) que le script ne peut pas vérifier à votre place.
 
 ### 6. Fichiers uploadés
 
