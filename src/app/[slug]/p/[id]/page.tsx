@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { t, normalizeLang, type Lang } from "@/lib/i18n";
 import { fcfa } from "@/lib/format";
 import { parseSource, recordVisit, keepAttribution } from "@/lib/track";
-import { waLink, orderMessage, tiktokVideoId } from "@/lib/whatsapp";
+import { tiktokVideoId } from "@/lib/whatsapp";
 import TikTokEmbed from "@/components/TikTokEmbed";
 
 export const dynamic = "force-dynamic";
@@ -87,18 +87,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
   }
   const selected = typeof searchParams.variant === "string" ? searchParams.variant : null;
 
-  const productUrl = `${base}/${shop.slug}/p/${product.id}`;
-  const waHref = waLink(
-    shop.seller_phone,
-    orderMessage({
-      productName: product.name,
-      variant: selected,
-      qty: 1,
-      priceLabel: fcfa(product.price_fcfa),
-      productUrl,
-      lang,
-    })
-  );
+  const source = parseSource(searchParams);
   const videoId = product.video_url ? tiktokVideoId(product.video_url) : null;
   const out = product.stock_state === "out";
 
@@ -188,12 +177,18 @@ export default async function ProductPage({ params, searchParams }: Props) {
         {/* CTA */}
         <div className="mt-6 flex flex-col gap-2.5">
           {!out && (
-            <a
-              href={waHref}
-              className="rounded-2xl bg-wagreen px-5 py-4 text-center text-sm font-extrabold text-[#053B1D]"
-            >
-              💬 {t(lang, "shop.orderWhatsApp")}
-            </a>
+            <form method="post" action={`/${shop.slug}/commander`}>
+              <input type="hidden" name="product" value={product.id} />
+              {selected && <input type="hidden" name="variant" value={selected} />}
+              <input type="hidden" name="qty" value="1" />
+              <input type="hidden" name="source" value={source} />
+              <button
+                type="submit"
+                className="w-full rounded-2xl bg-wagreen px-5 py-4 text-center text-sm font-extrabold text-[#053B1D]"
+              >
+                💬 {t(lang, "shop.orderWhatsApp")}
+              </button>
+            </form>
           )}
           {!out && shop.momo_enabled === 1 && (
             <span className="rounded-2xl bg-mango/40 px-5 py-4 text-center text-sm font-extrabold text-[#3A2A00] opacity-70">
