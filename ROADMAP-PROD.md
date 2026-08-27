@@ -5,9 +5,9 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-27, fin du lot 1.
+**Dernière mise à jour** : 2026-08-27, fin du lot 2.
 **État du code** : V1+V2 complets, fournisseurs simulés, base SQLite.
-74 tests verts, build sans erreur.
+84 tests verts, build sans erreur.
 
 ---
 
@@ -18,8 +18,9 @@ décidé et ce qui reste à trancher.
 - [x] **Lot 1 — Paiement direct vendeuse** — mode `direct` par défaut, écran de
       paiement affichant le numéro de la vendeuse, état « paiement annoncé »,
       confirmation par la vendeuse seule. Sans JavaScript, FR/EN.
-- [ ] **Lot 2 — Encaissement de l'abonnement, à la main** — activation manuelle
-      depuis le back-office, distinction payé / offert.
+- [x] **Lot 2 — Encaissement de l'abonnement, à la main** — activation manuelle
+      depuis le back-office (N mois, référence MoMo, note), période offerte
+      distinguée du payé, journal d'audit, écran admin enrichi.
 - [ ] **Lot 3 — Ce qu'un site public doit avoir** — pages légales, aperçu OG,
       404/500, robots.txt, sitemap.
 - [ ] **Lot 4 — PostgreSQL** — dialecte selon `DATABASE_URL`, portage des
@@ -48,6 +49,10 @@ décidé et ce qui reste à trancher.
 | 2026-08-27 | Lot 1 : le nouvel état s'appelle `payment_announced` et ne vaut **pas** paiement. Seule la vendeuse fait passer à `paid`. | R1 : une déclaration d'acheteuse n'est pas un encaissement. Tara n'est pas témoin de la transaction. |
 | 2026-08-27 | Lot 1 : le pixel TikTok `CompletePayment` ne se déclenche **que** sur `paid`. | Compter une annonce comme un achat fausserait les chiffres du pilote (lot 7). |
 | 2026-08-27 | Lot 1 : les libellés de l'espace vendeuse restent en français en dur. | L'ensemble de `/app` suit déjà cette convention ; tout passer par `i18n.ts` serait une réécriture hors périmètre. Les textes **acheteuse** passent tous par `i18n.ts`, FR et EN. |
+| 2026-08-27 | Lot 2 : `subscriptions.origin` vaut `aggregator`, `manual` ou `offered`. Une période **offerte vaut 0 F** et n'entre pas dans le revenu. | Sans cette distinction, le chiffre d'affaires serait faux dès le premier mois du pilote. |
+| 2026-08-27 | Lot 2 : l'idempotence de l'activation manuelle repose sur un **index unique partiel** `(shop_id, payment_ref)`. | Même philosophie que R3 : la garde est en base, pas dans le code applicatif. Les périodes sans référence ne sont pas contraintes. |
+| 2026-08-27 | Lot 2 : un abonnement **payé** exige une référence de transaction ; une période **offerte** non. | Un encaissement sans référence serait intraçable au moment de rapprocher les comptes. |
+| 2026-08-27 | Lot 2 : `nextPeriod()` et `applyPeriodToShop()` sont partagés par l'agrégateur et l'activation manuelle. | Exigence du programme : un seul chemin d'abonnement, pas deux qui divergent. |
 | 2026-08-27 | Le tag `v1.0-mock` reste **local**. | L'environnement d'exécution refuse le push des refs de tags (branches acceptées). Action reportée à MIKE. |
 
 ---
