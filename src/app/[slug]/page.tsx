@@ -1,16 +1,18 @@
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { t, normalizeLang, type Lang } from "@/lib/i18n";
 import { fcfa } from "@/lib/format";
+import { parseSource, recordVisit, keepAttribution } from "@/lib/track";
 
-// Vitrine publique — SSR, zéro JS client en Phase 0.
-// Tracking de visite et embed oEmbed : Phase 1.
+// Vitrine publique — SSR, zéro JS client.
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: { slug: string } };
+type SP = { v?: string; src?: string };
+type Props = { params: { slug: string }; searchParams: SP };
 
 async function getShop(slug: string) {
   const shop = await db
@@ -59,12 +61,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ShopPage({ params }: Props) {
+export default async function ShopPage({ params, searchParams }: Props) {
   const data = await getShop(params.slug);
   if (!data || data.shop.suspended === 1) notFound();
   const { shop, products, salesCount } = data;
   const lang: Lang = normalizeLang(shop.seller_lang);
   const videos = products.filter((p) => p.video_url);
+  const attr = keepAttribution(searchParams);
+
+  await recordVisit({
+    shopId: shop.id,
+    source: parseSource(searchParams),
+    userAgent: headers().get("user-agent"),
+  });
 
   return (
     <main className="mx-auto max-w-md pb-8">
@@ -96,7 +105,7 @@ export default async function ShopPage({ params }: Props) {
             {videos.map((p) => (
               <Link
                 key={p.id}
-                href={`/${shop.slug}/p/${p.id}`}
+                href={`/${shop.slug}/p/${p.id}${attr}`}
                 className="relative h-32 w-24 shrink-0 rounded-xl bg-gradient-to-br from-[#3B4784] to-[#222848] p-2 text-[10px] font-semibold text-white"
               >
                 <span className="absolute right-2 top-2">▶</span>
@@ -117,7 +126,7 @@ export default async function ShopPage({ params }: Props) {
         {products.map((p, i) => (
           <Link
             key={p.id}
-            href={`/${shop.slug}/p/${p.id}`}
+            href={`/${shop.slug}/p/${p.id}${attr}`}
             className="overflow-hidden rounded-2xl border border-gray-200 bg-white"
           >
             <div
