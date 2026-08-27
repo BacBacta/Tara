@@ -111,7 +111,18 @@ export interface AuditLogTable {
   at: Generated<string>;
 }
 
+export interface OtpCodesTable {
+  id: string;
+  phone: string;
+  code_hash: string;
+  expires_at: string;
+  attempts: Generated<number>;
+  consumed: Generated<number>;
+  created_at: Generated<string>;
+}
+
 export interface DB {
+  otp_codes: OtpCodesTable;
   sellers: SellersTable;
   shops: ShopsTable;
   products: ProductsTable;

@@ -1,12 +1,43 @@
-// Placeholder Phase 0 — l'onboarding complet en 4 étapes est livré en Phase 4.
-export default function CreerPage() {
+import { ObShell, inputCls, labelCls, ctaCls } from "@/components/Onboarding";
+
+export const dynamic = "force-dynamic";
+
+export default function Etape1({ searchParams }: { searchParams: { err?: string } }) {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-3 px-6 text-center">
-      <p className="text-4xl">🛍️</p>
-      <h1 className="text-lg font-extrabold">Crée ta boutique en 10 minutes</h1>
-      <p className="text-sm text-gray-500">
-        L&apos;inscription ouvre en Phase 4 (onboarding + OTP WhatsApp).
-      </p>
-    </main>
+    <ObShell
+      step={1}
+      title="Crée ta boutique en 10 minutes 🛍️"
+      subtitle="Gratuit jusqu'à 10 articles. Il te faut juste ton numéro WhatsApp."
+    >
+      {searchParams.err === "phone" && (
+        <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
+          Numéro invalide — entre ton numéro WhatsApp (ex : 6 91 88 22 10).
+        </p>
+      )}
+      {searchParams.err === "rate" && (
+        <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
+          Trop de codes demandés — réessaie dans une heure.
+        </p>
+      )}
+      <form method="post" action="/creer/otp">
+        <label className={labelCls}>
+          Ton numéro WhatsApp
+          <input
+            name="phone"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="6 91 88 22 10"
+            required
+            className={inputCls}
+          />
+        </label>
+        <p className="mt-2 text-xs text-gray-500">
+          C&apos;est là que tes commandes arriveront. Un code de confirmation t&apos;est envoyé.
+        </p>
+        <button type="submit" className={ctaCls}>
+          Commencer →
+        </button>
+      </form>
+    </ObShell>
   );
 }
