@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { readSession } from "@/lib/session";
 import { getShopBySeller } from "@/lib/sellers";
 import { ORDER_STATUSES, canTransition, type OrderStatus } from "@/lib/orders";
+import { openReview } from "@/lib/reviews";
 
 const input = z.object({
   order: z.string().regex(/^B-\d{4,6}$/),
@@ -39,5 +40,11 @@ export async function POST(req: NextRequest) {
     .set({ status: parsed.data.to })
     .where("id", "=", order.id)
     .execute();
+
+  // V2 : une commande livrée ouvre un droit d'avis (lien à usage unique)
+  if (parsed.data.to === "delivered") {
+    await openReview(order.id);
+  }
+
   return NextResponse.redirect(`${base}/app/commandes`, 303);
 }
