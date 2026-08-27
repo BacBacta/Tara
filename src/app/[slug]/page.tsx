@@ -94,6 +94,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: `${data.shop.city} · Commande en 2 clics sur WhatsApp`,
       url: `${base}/${data.shop.slug}`,
       type: "website",
+      siteName: "Tara",
+      // aperçu généré à la volée : aucune vendeuse n'a de fichier à fournir
+      images: [
+        {
+          url: `${base}/${data.shop.slug}/og`,
+          width: 1200,
+          height: 630,
+          alt: data.shop.name,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: data.shop.name,
+      description: `${data.shop.city} · Commande en 2 clics sur WhatsApp`,
+      images: [`${base}/${data.shop.slug}/og`],
     },
   };
 }
@@ -283,6 +299,11 @@ export default async function ShopPage({ params, searchParams }: Props) {
           >
             ✨ {t(lang, "shop.createYours")} →
           </Link>
+        </div>
+        <div className="mt-4 flex flex-wrap justify-center gap-3 text-[10px] text-gray-400">
+          <Link href="/cgu" className="underline">{t(lang, "legal.terms")}</Link>
+          <Link href="/confidentialite" className="underline">{t(lang, "legal.privacy")}</Link>
+          <Link href="/mentions-legales" className="underline">{t(lang, "legal.notice")}</Link>
         </div>
       </footer>
     </main>
