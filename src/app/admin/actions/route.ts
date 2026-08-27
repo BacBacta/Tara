@@ -6,7 +6,11 @@ import { audit, readAdmin } from "@/lib/admin";
 const input = z.object({
   shop: z.string().min(6).max(64).optional(),
   product: z.string().min(6).max(64).optional(),
-  op: z.enum(["suspend", "unsuspend", "remove_product"]),
+  review: z.string().min(6).max(64).optional(),
+  op: z.enum([
+    "suspend", "unsuspend", "remove_product",
+    "hide_review", "publish_review", // V2 — modération des avis
+  ]),
 });
 
 export async function POST(req: NextRequest) {
@@ -18,12 +22,24 @@ export async function POST(req: NextRequest) {
   const parsed = input.safeParse({
     shop: form.get("shop") ?? undefined,
     product: form.get("product") ?? undefined,
+    review: form.get("review") ?? undefined,
     op: form.get("op"),
   });
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
-  const { shop, product, op } = parsed.data;
+  const { shop, product, review, op } = parsed.data;
+
+  if (op === "hide_review" || op === "publish_review") {
+    if (!review) return NextResponse.json({ error: "missing_review" }, { status: 400 });
+    await db
+      .updateTable("reviews")
+      .set({ status: op === "hide_review" ? "hidden" : "published" })
+      .where("id", "=", review)
+      .execute();
+    await audit(admin.email, op, review);
+    return NextResponse.redirect(`${base}/admin?ok=1`, 303);
+  }
 
   if (op === "remove_product") {
     if (!product) return NextResponse.json({ error: "missing_product" }, { status: 400 });

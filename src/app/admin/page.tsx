@@ -44,6 +44,42 @@ export default async function AdminHome({ searchParams }: { searchParams: { ok?:
     .where("status", "=", "success")
     .executeTakeFirst();
 
+  // ===== V2 =====
+  const identities = await db
+    .selectFrom("external_identities")
+    .innerJoin("sellers", "sellers.id", "external_identities.seller_id")
+    .select([
+      "external_identities.username", "external_identities.status",
+      "external_identities.follower_count", "external_identities.synced_at",
+      "sellers.name as seller_name",
+    ])
+    .orderBy("external_identities.connected_at", "desc")
+    .limit(10)
+    .execute();
+
+  const webhookStats = await db
+    .selectFrom("webhook_events")
+    .select(["type", db.fn.countAll<number>().as("n")])
+    .groupBy("type")
+    .execute();
+  const unprocessed = await db
+    .selectFrom("webhook_events")
+    .select(db.fn.countAll<number>().as("n"))
+    .where("processed_at", "is", null)
+    .executeTakeFirst();
+
+  const flaggedReviews = await db
+    .selectFrom("reviews")
+    .innerJoin("shops", "shops.id", "reviews.shop_id")
+    .select([
+      "reviews.id", "reviews.rating", "reviews.comment", "reviews.status",
+      "shops.name as shop_name",
+    ])
+    .where("reviews.status", "in", ["published", "hidden"])
+    .orderBy("reviews.submitted_at", "desc")
+    .limit(8)
+    .execute();
+
   const logs = await db
     .selectFrom("audit_log")
     .selectAll()
@@ -163,6 +199,79 @@ export default async function AdminHome({ searchParams }: { searchParams: { ok?:
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* ===== V2 ===== */}
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <div>
+          <h2 className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
+            Comptes TikTok connectés
+          </h2>
+          <div className="rounded-2xl border border-gray-200 bg-white p-3 text-xs">
+            {identities.length === 0 && <p className="text-gray-400">Aucun compte connecté.</p>}
+            {identities.map((i) => (
+              <div key={`${i.username}-${i.seller_name}`} className="flex items-center gap-2 border-b border-gray-100 py-1.5 last:border-0">
+                <b className="flex-1 truncate">@{i.username}</b>
+                <span className="tabular-nums text-gray-500">
+                  {i.follower_count.toLocaleString("fr-FR")} ab.
+                </span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                  i.status === "active" ? "bg-emerald-50 text-okgreen" : "bg-red-50 text-red-500"
+                }`}>
+                  {i.status === "active" ? "actif" : "révoqué"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h2 className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
+            Webhooks TikTok
+          </h2>
+          <div className="rounded-2xl border border-gray-200 bg-white p-3 text-xs">
+            {webhookStats.length === 0 && <p className="text-gray-400">Aucun événement reçu.</p>}
+            {webhookStats.map((w) => (
+              <div key={w.type} className="flex justify-between border-b border-gray-100 py-1.5 last:border-0">
+                <span className="font-semibold">{w.type}</span>
+                <span className="tabular-nums text-gray-500">{Number(w.n)}</span>
+              </div>
+            ))}
+            <p className={`mt-2 text-[11px] font-bold ${
+              Number(unprocessed?.n ?? 0) > 0 ? "text-amber-700" : "text-okgreen"
+            }`}>
+              {Number(unprocessed?.n ?? 0) > 0
+                ? `⚠ ${Number(unprocessed?.n)} événement(s) non traité(s)`
+                : "✓ Tous les événements traités"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <h2 className="mb-2 mt-6 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
+        Modération des avis
+      </h2>
+      <div className="rounded-2xl border border-gray-200 bg-white p-3 text-xs">
+        {flaggedReviews.length === 0 && <p className="text-gray-400">Aucun avis déposé.</p>}
+        {flaggedReviews.map((r) => (
+          <div key={r.id} className="flex items-center gap-2 border-b border-gray-100 py-1.5 last:border-0">
+            <span className="w-24 shrink-0 truncate text-gray-500">{r.shop_name}</span>
+            <span className="text-[#E8A413]">{"★".repeat(r.rating ?? 0)}</span>
+            <span className="flex-1 truncate text-gray-600">{r.comment ?? "—"}</span>
+            {r.status === "hidden" && (
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-extrabold text-amber-700">
+                masqué
+              </span>
+            )}
+            <form method="post" action="/admin/actions">
+              <input type="hidden" name="review" value={r.id} />
+              <input type="hidden" name="op" value={r.status === "hidden" ? "publish_review" : "hide_review"} />
+              <button className="rounded-full border border-gray-200 px-2.5 py-0.5 text-[10px] font-extrabold text-gray-500">
+                {r.status === "hidden" ? "Republier" : "Masquer"}
+              </button>
+            </form>
+          </div>
+        ))}
       </div>
 
       <h2 className="mb-2 mt-6 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">

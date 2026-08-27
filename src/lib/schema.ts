@@ -33,6 +33,7 @@ export interface ProductsTable {
   video_url: string | null;
   position: Generated<number>;
   removed: Generated<number>;
+  stock_qty: number | null; // NULL = illimité
   created_at: Generated<string>;
 }
 

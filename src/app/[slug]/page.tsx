@@ -8,12 +8,13 @@ import { fcfa } from "@/lib/format";
 import { parseSource, recordVisit, keepAttribution } from "@/lib/track";
 import TikTokPixel from "@/components/TikTokPixel";
 import { getShopIdentity } from "@/lib/identities";
+import { lockedProductIds, openDueDrops } from "@/lib/drops";
 
 // Vitrine publique — SSR, zéro JS client.
 
 export const dynamic = "force-dynamic";
 
-type SP = { v?: string; src?: string };
+type SP = { v?: string; src?: string; follow?: string };
 type Props = { params: { slug: string }; searchParams: SP };
 
 async function getShop(slug: string) {
@@ -53,6 +54,17 @@ async function getShop(slug: string) {
 
   const identity = await getShopIdentity(shop.id);
 
+  // V2 — drops : ouvre ceux arrivés à échéance, masque les articles réservés
+  await openDueDrops(shop.id);
+  const locked = await lockedProductIds(shop.id);
+  const nextDrop = await db
+    .selectFrom("drops")
+    .select(["id", "title", "opens_at"])
+    .where("shop_id", "=", shop.id)
+    .where("status", "=", "scheduled")
+    .orderBy("opens_at", "asc")
+    .executeTakeFirst();
+
   const sales = await db
     .selectFrom("orders")
     .select(db.fn.countAll<number>().as("n"))
@@ -60,7 +72,14 @@ async function getShop(slug: string) {
     .where("status", "in", ["paid", "delivered"])
     .executeTakeFirst();
 
-  return { shop, products, taggedVideos, identity, salesCount: Number(sales?.n ?? 0) };
+  return {
+    shop,
+    // les articles réservés à un drop non ouvert sont masqués partout
+    products: products.filter((p) => !locked.has(p.id)),
+    taggedVideos: taggedVideos.filter((v) => !locked.has(v.product_id)),
+    identity, nextDrop,
+    salesCount: Number(sales?.n ?? 0),
+  };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -82,7 +101,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ShopPage({ params, searchParams }: Props) {
   const data = await getShop(params.slug);
   if (!data || data.shop.suspended === 1) notFound();
-  const { shop, products, taggedVideos, identity, salesCount } = data;
+  const { shop, products, taggedVideos, identity, nextDrop, salesCount } = data;
   const lang: Lang = normalizeLang(shop.seller_lang);
   // V2 prioritaire : vidéos synchronisées + articles tagués ; sinon V1 (oEmbed manuel)
   const v2Videos = taggedVideos;
@@ -119,7 +138,54 @@ export default async function ShopPage({ params, searchParams }: Props) {
         <p className="mt-1 text-xs text-gray-500">
           📍 {shop.city} · <b className="text-ink">{salesCount}</b> {t(lang, "shop.sales")}
         </p>
+
+        {/* V2 — suivi de boutique (opt-in explicite) */}
+        {searchParams.follow === "ok" ? (
+          <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11px] font-bold text-okgreen">
+            ✓ {lang === "en" ? "You will receive new arrivals on WhatsApp." : "Tu recevras les nouveautés sur WhatsApp."}
+          </p>
+        ) : (
+          <details className="mt-3">
+            <summary className="cursor-pointer text-[11px] font-extrabold text-indigo9">
+              🔔 {lang === "en" ? "Follow this shop" : "Suivre la boutique"}
+            </summary>
+            <form method="post" action={`/${shop.slug}/suivre`} className="mt-2 flex gap-1.5">
+              <input
+                name="phone"
+                inputMode="tel"
+                required
+                placeholder="6 77 12 34 56"
+                className="flex-1 rounded-xl border-2 border-gray-200 px-3 py-2 text-xs font-bold focus:border-indigo9 focus:outline-none"
+              />
+              <button className="rounded-xl bg-indigo9 px-3 py-2 text-[11px] font-extrabold text-white">
+                {lang === "en" ? "Follow" : "Suivre"}
+              </button>
+            </form>
+            <p className="mt-1 text-[10px] text-gray-400">
+              {lang === "en"
+                ? "Max 4 messages/month. Unsubscribe in one click."
+                : "4 messages par mois maximum. Désabonnement en un clic."}
+            </p>
+          </details>
+        )}
       </section>
+
+      {/* V2 — prochain drop */}
+      {nextDrop && (
+        <Link
+          href={`/${shop.slug}/drop/${nextDrop.id}`}
+          className="mx-3 mt-3 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-indigo9 to-indigoDeep px-4 py-3 text-white"
+        >
+          <span className="text-xl">📦</span>
+          <span className="flex-1">
+            <b className="block text-xs">DROP — {nextDrop.title}</b>
+            <span className="text-[11px] opacity-80">
+              {new Date(nextDrop.opens_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+            </span>
+          </span>
+          <span className="rounded-lg bg-white/15 px-2.5 py-1 text-[11px] font-extrabold">Voir →</span>
+        </Link>
+      )}
 
       {/* vidéos taguées */}
       {v2Videos.length > 0 && (

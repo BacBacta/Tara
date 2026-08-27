@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { db } from "./db";
+import type { Kysely } from "kysely";
+import type { DB } from "./schema";
+import { db as defaultDb } from "./db";
 
 export const ORDER_STATUSES = [
   "initiated",
@@ -41,16 +43,36 @@ export type CreateOrderInput = z.infer<typeof createOrderInput>;
 
 export async function createOrder(
   shopId: string,
-  input: CreateOrderInput
+  input: CreateOrderInput,
+  db: Kysely<DB> = defaultDb
 ): Promise<{ id: string; amountFcfa: number; productName: string } | null> {
   const product = await db
     .selectFrom("products")
-    .select(["id", "name", "price_fcfa", "stock_state"])
+    .select(["id", "name", "price_fcfa", "stock_state", "stock_qty"])
     .where("id", "=", input.productId)
     .where("shop_id", "=", shopId)
     .where("removed", "=", 0)
     .executeTakeFirst();
   if (!product || product.stock_state === "out") return null;
+
+  // Stock chiffré (drops) : décrément ATOMIQUE — la garde SQL empêche la
+  // survente même sous requêtes concurrentes.
+  if (product.stock_qty !== null) {
+    const dec = await db
+      .updateTable("products")
+      .set((eb) => ({ stock_qty: eb("stock_qty", "-", input.qty) }))
+      .where("id", "=", product.id)
+      .where("stock_qty", ">=", input.qty)
+      .executeTakeFirst();
+    if (Number(dec.numUpdatedRows) === 0) return null; // épuisé
+    // passage automatique en rupture quand le stock atteint zéro
+    await db
+      .updateTable("products")
+      .set({ stock_state: "out" })
+      .where("id", "=", product.id)
+      .where("stock_qty", "<=", 0)
+      .execute();
+  }
 
   const amount = product.price_fcfa * input.qty;
   // 5 essais en cas de collision d'identifiant court

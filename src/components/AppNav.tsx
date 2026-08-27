@@ -4,6 +4,7 @@ const TABS = [
   ["/app", "🏪", "Boutique"],
   ["/app/commandes", "📦", "Commandes"],
   ["/app/articles", "🛍️", "Articles"],
+  ["/app/annonces", "📣", "Annonces"],
   ["/app/reglages", "⚙️", "Réglages"],
 ] as const;
 

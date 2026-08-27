@@ -79,6 +79,23 @@ export default async function AppHome({ searchParams }: { searchParams: { ok?: s
         <span className="ml-auto text-indigo9">→</span>
       </Link>
 
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {[
+          ["/app/videos", "▶", "Vidéos"],
+          ["/app/drops", "📦", "Drops"],
+          ["/app/avis", "★", "Avis"],
+        ].map(([href, icon, label]) => (
+          <Link
+            key={href}
+            href={href}
+            className="rounded-2xl border border-gray-200 bg-white px-3 py-2.5 text-center text-[11px] font-extrabold"
+          >
+            <span className="block text-base">{icon}</span>
+            {label}
+          </Link>
+        ))}
+      </div>
+
       <Link
         href="/app/partage"
         className="mt-3 flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-xs font-bold"

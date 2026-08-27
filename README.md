@@ -26,7 +26,7 @@ Back-office : `/admin`. Onboarding vendeuse : `/creer`.
 | `npm run build` / `npm start` | build et exécution en production |
 | `npm run db:migrate` | applique `migrations/*.sql` dans l'ordre |
 | `npm run db:seed` | jeu de données de démonstration (réinitialise les tables) |
-| `npm test` | tests Vitest (26 tests) |
+| `npm test` | tests Vitest (58 tests) |
 | `node scripts/create-admin.mjs <email> <mdp>` | crée/réinitialise un administrateur |
 
 ## Architecture
@@ -164,10 +164,52 @@ En V1 les photos sont écrites dans `public/uploads/`. Pour passer à un stockag
 objet (S3/R2), remplacer l'écriture disque dans `src/lib/products.ts` — c'est le
 seul point d'écriture.
 
+## V2 — intégrations TikTok et rétention
+
+Livrée. Tout est derrière des interfaces avec implémentations **mock** : aucune
+requête réseau n'est faite tant que les vrais fournisseurs ne sont pas branchés.
+
+| Bloc | Contenu | Interface à brancher |
+|---|---|---|
+| G1 | Login Kit, badge « compte TikTok vérifié », jetons **chiffrés AES-256-GCM** | `TikTokProvider` (`src/lib/tiktok.ts`) |
+| G2 | Synchronisation des vidéos (Display API), tag vidéo↔articles, vitrine shoppable | idem |
+| G3 | Webhooks TikTok idempotents : nouvelle vidéo → notification, désautorisation → badge retiré sous 24 h | `TIKTOK_WEBHOOK_SECRET` |
+| G4 | Funnel vues → visites → commandes par vidéo | — |
+| G5 | Avis vérifiés à lien unique (commande livrée uniquement), réponse et modération | `NotifyProvider` |
+| G6 | Suivi de boutique (opt-in), annonces **4/mois maximum**, désabonnement signé en un clic | `NotifyProvider` (BSP WhatsApp) |
+| G7 | Drops : compte à rebours, aperçu verrouillé, alerte à l'ouverture, **stock atomique sans survente** | — |
+| G8 | Back-office : comptes connectés, supervision des webhooks, modération des avis | — |
+
+### Brancher TikTok pour de vrai
+
+1. Créer l'app sur [TikTok for Developers](https://developers.tiktok.com/) et
+   demander les scopes `user.info.basic`, `user.info.profile`, `user.info.stats`,
+   `video.list` (l'audit prend plusieurs semaines — à lancer tôt).
+2. Renseigner `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_WEBHOOK_SECRET`.
+3. Écrire une classe implémentant `TikTokProvider` (OAuth réel + appels Display API)
+   et la retourner depuis `getTikTokProvider()` quand `TIKTOK_PROVIDER=real`.
+   Aucun écran, aucune route, aucun test à modifier.
+4. Déclarer l'URL de rappel des webhooks : `https://…/api/webhooks/tiktok`.
+
+### Brancher les notifications WhatsApp
+
+Ouvrir un compte **WhatsApp Business API** via un BSP, faire approuver les quatre
+templates (`new_video_tag`, `review_request`, `shop_announcement`, `drop_open`),
+puis implémenter `NotifyProvider` (`src/lib/notify.ts`). Les messages ne partent
+jamais du compte personnel de la vendeuse — c'est une exigence de conformité.
+
+### Points d'attention V2
+
+- Les **quotas TikTok** : la synchronisation est planifiée (1×/jour) et déclenchée
+  par webhook — ne jamais poller agressivement.
+- Le **badge vérifié** doit tomber dès la révocation : c'est traité par le webhook
+  `authorization.removed` et par l'échec de rafraîchissement du jeton.
+- Le **quota d'annonces** (4/30 jours) est bloquant côté serveur : il protège les
+  clientes du spam et le compte WhatsApp d'un blocage.
+
 ## Feuille de route
 
-- **V2** : connexion TikTok officielle (Login Kit + badge vérifié), synchronisation
-  des vidéos (Display API), webhooks TikTok, funnel vues→visites→commandes, avis
-  vérifiés, drops, annonces via l'API WhatsApp Business.
-- **V3** : exploitation du pixel et de l'Events API (boost publicitaire),
-  livraison intégrée.
+- **V3** : exploitation du pixel et de l'Events API (boost publicitaire des vidéos
+  optimisé sur les commandes réelles), livraison intégrée avec partenaires
+  coursiers, puis extensions stratégiques (paiement diaspora, catalogues
+  fournisseurs).
