@@ -1,0 +1,165 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import type { Metadata } from "next";
+import { db } from "@/lib/db";
+import { t, normalizeLang, type Lang } from "@/lib/i18n";
+import { fcfa } from "@/lib/format";
+
+// Vitrine publique — SSR, zéro JS client en Phase 0.
+// Tracking de visite et embed oEmbed : Phase 1.
+
+export const dynamic = "force-dynamic";
+
+type Props = { params: { slug: string } };
+
+async function getShop(slug: string) {
+  const shop = await db
+    .selectFrom("shops")
+    .innerJoin("sellers", "sellers.id", "shops.seller_id")
+    .select([
+      "shops.id", "shops.slug", "shops.name", "shops.city",
+      "shops.banner_color", "shops.momo_enabled", "shops.suspended",
+      "sellers.lang as seller_lang",
+    ])
+    .where("shops.slug", "=", slug)
+    .executeTakeFirst();
+  if (!shop) return null;
+
+  const products = await db
+    .selectFrom("products")
+    .selectAll()
+    .where("shop_id", "=", shop.id)
+    .where("removed", "=", 0)
+    .orderBy("position", "asc")
+    .execute();
+
+  const sales = await db
+    .selectFrom("orders")
+    .select(db.fn.countAll<number>().as("n"))
+    .where("shop_id", "=", shop.id)
+    .where("status", "in", ["paid", "delivered"])
+    .executeTakeFirst();
+
+  return { shop, products, salesCount: Number(sales?.n ?? 0) };
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const data = await getShop(params.slug);
+  if (!data) return {};
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  return {
+    title: `${data.shop.name} — Bio-Shop`,
+    description: `${data.shop.city} · ${data.products.length} articles · Commande WhatsApp, paiement Mobile Money.`,
+    openGraph: {
+      title: data.shop.name,
+      description: `${data.shop.city} · Commande en 2 clics sur WhatsApp`,
+      url: `${base}/${data.shop.slug}`,
+      type: "website",
+    },
+  };
+}
+
+export default async function ShopPage({ params }: Props) {
+  const data = await getShop(params.slug);
+  if (!data || data.shop.suspended === 1) notFound();
+  const { shop, products, salesCount } = data;
+  const lang: Lang = normalizeLang(shop.seller_lang);
+  const videos = products.filter((p) => p.video_url);
+
+  return (
+    <main className="mx-auto max-w-md pb-8">
+      {/* bannière */}
+      <div
+        className="h-28"
+        style={{
+          background: `repeating-linear-gradient(135deg, ${shop.banner_color} 0 18px, #252F68 18px 26px, ${shop.banner_color} 26px 44px, #4A58A8 44px 52px)`,
+        }}
+      />
+      {/* carte boutique */}
+      <section className="relative mx-3 -mt-11 rounded-2xl border border-gray-200 bg-white p-4">
+        <div className="absolute -top-8 left-4 flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-gradient-to-br from-[#FFD9A8] to-[#D98A4A] text-2xl">
+          🛍️
+        </div>
+        <h1 className="mt-6 text-lg font-extrabold">{shop.name}</h1>
+        <p className="mt-1 text-xs text-gray-500">
+          📍 {shop.city} · <b className="text-ink">{salesCount}</b> {t(lang, "shop.sales")}
+        </p>
+      </section>
+
+      {/* vidéos taguées */}
+      {videos.length > 0 && (
+        <>
+          <h2 className="mx-4 mb-2 mt-5 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
+            {t(lang, "shop.seenInVideos")}
+          </h2>
+          <div className="flex gap-2 overflow-x-auto px-3">
+            {videos.map((p) => (
+              <Link
+                key={p.id}
+                href={`/${shop.slug}/p/${p.id}`}
+                className="relative h-32 w-24 shrink-0 rounded-xl bg-gradient-to-br from-[#3B4784] to-[#222848] p-2 text-[10px] font-semibold text-white"
+              >
+                <span className="absolute right-2 top-2">▶</span>
+                <span className="absolute bottom-2 left-2 right-2 leading-tight">
+                  {p.name}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* grille articles */}
+      <h2 className="mx-4 mb-2 mt-5 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
+        {t(lang, "shop.products")}
+      </h2>
+      <div className="grid grid-cols-2 gap-2.5 px-3">
+        {products.map((p, i) => (
+          <Link
+            key={p.id}
+            href={`/${shop.slug}/p/${p.id}`}
+            className="overflow-hidden rounded-2xl border border-gray-200 bg-white"
+          >
+            <div
+              className={`flex h-28 items-center justify-center text-4xl ${
+                ["bg-gradient-to-br from-[#FBE3D2] to-[#F2B98F]",
+                 "bg-gradient-to-br from-[#D9E6F6] to-[#A9C3E8]",
+                 "bg-gradient-to-br from-[#EFE0F6] to-[#CBAAE2]",
+                 "bg-gradient-to-br from-[#E0F0E4] to-[#A9D4B4]"][i % 4]
+              }`}
+            >
+              🛍️
+            </div>
+            <p className="px-2.5 pt-2 text-xs font-bold leading-tight">{p.name}</p>
+            <p className="px-2.5 pb-1 pt-0.5 text-sm font-extrabold text-indigo9">
+              {fcfa(p.price_fcfa)}
+            </p>
+            {p.video_url && (
+              <span className="mx-2.5 mb-2 inline-block rounded-full bg-purple-50 px-2 py-0.5 text-[9px] font-bold text-purple-700">
+                ▶ vidéo
+              </span>
+            )}
+            {p.stock_state === "out" && (
+              <span className="mx-2.5 mb-2 inline-block rounded-full bg-red-50 px-2 py-0.5 text-[9px] font-bold text-red-600">
+                {t(lang, "shop.outOfStock")}
+              </span>
+            )}
+          </Link>
+        ))}
+      </div>
+
+      {/* pied de page viral */}
+      <footer className="mt-8 text-center text-[11px] text-gray-500">
+        {t(lang, "shop.createdWith")} <b className="text-indigo9">Bio·Shop</b>
+        <div className="mt-2">
+          <Link
+            href="/creer"
+            className="inline-block rounded-full border border-indigo9 px-4 py-1.5 text-[11px] font-extrabold text-indigo9"
+          >
+            ✨ {t(lang, "shop.createYours")} →
+          </Link>
+        </div>
+      </footer>
+    </main>
+  );
+}
