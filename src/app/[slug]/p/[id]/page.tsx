@@ -7,6 +7,7 @@ import { t, normalizeLang, type Lang } from "@/lib/i18n";
 import { fcfa } from "@/lib/format";
 import { parseSource, recordVisit, keepAttribution } from "@/lib/track";
 import { tiktokVideoId } from "@/lib/whatsapp";
+import { canAcceptPayment } from "@/lib/payments";
 import TikTokEmbed from "@/components/TikTokEmbed";
 import TikTokPixel from "@/components/TikTokPixel";
 
@@ -28,7 +29,8 @@ async function getData(slug: string, id: string) {
     .innerJoin("sellers", "sellers.id", "shops.seller_id")
     .select([
       "shops.id", "shops.slug", "shops.name", "shops.momo_enabled",
-      "shops.suspended", "sellers.lang as seller_lang", "sellers.phone as seller_phone",
+      "shops.suspended", "shops.payment_mode", "shops.momo_number",
+      "sellers.lang as seller_lang", "sellers.phone as seller_phone",
     ])
     .where("shops.slug", "=", slug)
     .executeTakeFirst();
@@ -128,6 +130,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
       ? "TikTok video embedded via the public oEmbed API."
       : "Vidéo TikTok intégrée via l'API oEmbed publique.";
   const out = product.stock_state === "out";
+  const canPay = canAcceptPayment(shop);
 
   const variantHref = (value: string) => {
     const p = new URLSearchParams();
@@ -225,7 +228,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
               </button>
             </form>
           )}
-          {!out && shop.momo_enabled === 1 && (
+          {!out && canPay && (
             <form method="post" action={`/${shop.slug}/commander`}>
               <input type="hidden" name="product" value={product.id} />
               {selected && <input type="hidden" name="variant" value={selected} />}

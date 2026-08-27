@@ -7,6 +7,40 @@ import { canTransition, type OrderStatus } from "./orders";
 export const OPERATORS = ["mtn", "orange"] as const;
 export type Operator = (typeof OPERATORS)[number];
 
+/**
+ * Mode de paiement d'une boutique.
+ *  - "direct"     : l'acheteuse envoie l'argent au téléphone de la vendeuse.
+ *                   Aucun contrat, aucun intermédiaire — et surtout : Tara
+ *                   ne touche jamais cet argent (R1).
+ *  - "agregateur" : passerelle Mobile Money (parcours historique).
+ */
+export const PAYMENT_MODES = ["direct", "agregateur"] as const;
+export type PaymentMode = (typeof PAYMENT_MODES)[number];
+
+export function normalizePaymentMode(v: string | null | undefined): PaymentMode {
+  return v === "agregateur" ? "agregateur" : "direct";
+}
+
+export function operatorLabel(v: string | null | undefined): string {
+  return v === "orange" ? "Orange Money" : "MTN MoMo";
+}
+
+/**
+ * La boutique peut-elle proposer un bouton de paiement ?
+ *  - mode direct     : oui dès que la vendeuse a renseigné son numéro MoMo ;
+ *  - mode agrégateur : oui si la passerelle est activée.
+ * Sert à ne jamais offrir à l'acheteuse un bouton qui mène à une impasse.
+ */
+export function canAcceptPayment(shop: {
+  payment_mode?: string | null;
+  momo_number?: string | null;
+  momo_enabled?: number | null;
+}): boolean {
+  return normalizePaymentMode(shop.payment_mode) === "direct"
+    ? Boolean(shop.momo_number)
+    : shop.momo_enabled === 1;
+}
+
 export const phoneCm = z
   .string()
   .transform((s) => s.replace(/[^0-9]/g, ""))
@@ -92,6 +126,44 @@ export async function initiatePayment(
     .execute();
 
   return { paymentId, providerRef };
+}
+
+/**
+ * Mode direct : l'acheteuse déclare avoir envoyé l'argent.
+ * Ce n'est PAS une confirmation de paiement — seule la vendeuse peut
+ * confirmer, depuis son espace. La garde SQL sur le statut rend l'appel
+ * idempotent : un double clic ne produit qu'un seul effet.
+ */
+export async function announceDirectPayment(
+  orderId: string,
+  shopId: string,
+  dbi: Kysely<DB> = defaultDb
+): Promise<{ ok: boolean; error?: string }> {
+  const order = await dbi
+    .selectFrom("orders")
+    .select(["id", "status"])
+    .where("id", "=", orderId)
+    .where("shop_id", "=", shopId)
+    .executeTakeFirst();
+  if (!order) return { ok: false, error: "order_not_found" };
+
+  // Déjà annoncée : on ressort en succès (rejouer ne casse rien).
+  if (order.status === "payment_announced") return { ok: true };
+
+  if (!canTransition(order.status as OrderStatus, "payment_announced")) {
+    return { ok: false, error: "invalid_transition" };
+  }
+
+  const updated = await dbi
+    .updateTable("orders")
+    .set({ status: "payment_announced" })
+    .where("id", "=", order.id)
+    .where("status", "=", order.status) // ← garde : une seule transition
+    .executeTakeFirst();
+
+  return Number(updated.numUpdatedRows) === 0
+    ? { ok: false, error: "invalid_transition" }
+    : { ok: true };
 }
 
 export const webhookInput = z.object({

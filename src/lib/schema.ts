@@ -20,6 +20,9 @@ export interface ShopsTable {
   plan: Generated<string>; // free | paid
   plan_expires_at: string | null;
   suspended: Generated<number>;
+  payment_mode: Generated<string>; // direct | agregateur
+  momo_number: string | null; // portefeuille MoMo de la VENDEUSE (mode direct)
+  momo_operator: string | null; // mtn | orange
   created_at: Generated<string>;
 }
 

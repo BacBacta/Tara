@@ -6,6 +6,7 @@ import { db as defaultDb } from "./db";
 export const ORDER_STATUSES = [
   "initiated",
   "pending_payment",
+  "payment_announced",
   "paid",
   "to_deliver",
   "delivered",
@@ -15,8 +16,10 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 /** Transitions autorisées de la machine à états des commandes. */
 const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  initiated: ["pending_payment", "paid", "to_deliver", "cancelled"],
+  initiated: ["pending_payment", "payment_announced", "paid", "to_deliver", "cancelled"],
   pending_payment: ["paid", "cancelled"],
+  // Mode direct : l'acheteuse annonce son envoi, la vendeuse seule confirme.
+  payment_announced: ["paid", "cancelled"],
   paid: ["to_deliver", "delivered", "cancelled"],
   to_deliver: ["delivered", "cancelled"],
   delivered: [],
