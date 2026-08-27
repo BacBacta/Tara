@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 const STATUS_FR: Record<string, [string, string]> = {
   initiated: ["Initiée", "bg-gray-100 text-gray-600"],
   pending_payment: ["Attente paiement", "bg-amber-50 text-amber-700"],
+  payment_announced: ["💰 Paiement annoncé — à vérifier", "bg-amber-50 text-amber-700"],
   paid: ["✓ Payée MoMo", "bg-emerald-50 text-okgreen"],
   to_deliver: ["🛵 À livrer", "bg-indigo-50 text-indigo9"],
   delivered: ["✓ Livrée", "bg-emerald-50 text-okgreen"],

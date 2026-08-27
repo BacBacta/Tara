@@ -5,9 +5,9 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-27, fin du lot 0.
+**Dernière mise à jour** : 2026-08-27, fin du lot 1.
 **État du code** : V1+V2 complets, fournisseurs simulés, base SQLite.
-65 tests verts, build sans erreur.
+74 tests verts, build sans erreur.
 
 ---
 
@@ -15,7 +15,9 @@ décidé et ce qui reste à trancher.
 
 - [x] **Lot 0 — Hygiène du dépôt** — `main` créée, tag `v1.0-mock` (local),
       cette roadmap, tri des vulnérabilités npm.
-- [ ] **Lot 1 — Paiement direct vendeuse** — le lot qui rend le produit vendable.
+- [x] **Lot 1 — Paiement direct vendeuse** — mode `direct` par défaut, écran de
+      paiement affichant le numéro de la vendeuse, état « paiement annoncé »,
+      confirmation par la vendeuse seule. Sans JavaScript, FR/EN.
 - [ ] **Lot 2 — Encaissement de l'abonnement, à la main** — activation manuelle
       depuis le back-office, distinction payé / offert.
 - [ ] **Lot 3 — Ce qu'un site public doit avoir** — pages légales, aperçu OG,
@@ -42,6 +44,10 @@ décidé et ce qui reste à trancher.
 | 2026-08-27 | `main` créée depuis l'état `v1.0-mock` ; les lots arrivent par PR mergée dans `main`. | Traçabilité : un lot = une PR = un commit lisible. |
 | 2026-08-27 | **Aucune dépendance npm modifiée au lot 0.** | Aucun paquet n'est à la fois exécuté en production *et* corrigeable sans changement majeur. Voir l'annexe. |
 | 2026-08-27 | `npm audit fix` (avec ou sans `--force`) n'a **jamais** été lancé. | Consigne explicite du programme ; `--force` imposerait `next@16`, deux majeures d'écart. |
+| 2026-08-27 | Lot 1 : en mode `direct`, c'est le **numéro MoMo renseigné** qui ouvre le bouton de paiement ; `momo_enabled` ne gouverne plus que le mode `agregateur`. | Un seul interrupteur par mode : pas de double condition à comprendre pour la vendeuse, et jamais de bouton menant à une impasse. |
+| 2026-08-27 | Lot 1 : le nouvel état s'appelle `payment_announced` et ne vaut **pas** paiement. Seule la vendeuse fait passer à `paid`. | R1 : une déclaration d'acheteuse n'est pas un encaissement. Tara n'est pas témoin de la transaction. |
+| 2026-08-27 | Lot 1 : le pixel TikTok `CompletePayment` ne se déclenche **que** sur `paid`. | Compter une annonce comme un achat fausserait les chiffres du pilote (lot 7). |
+| 2026-08-27 | Lot 1 : les libellés de l'espace vendeuse restent en français en dur. | L'ensemble de `/app` suit déjà cette convention ; tout passer par `i18n.ts` serait une réécriture hors périmètre. Les textes **acheteuse** passent tous par `i18n.ts`, FR et EN. |
 | 2026-08-27 | Le tag `v1.0-mock` reste **local**. | L'environnement d'exécution refuse le push des refs de tags (branches acceptées). Action reportée à MIKE. |
 
 ---
@@ -79,7 +85,16 @@ passent). À créer côté GitHub par MIKE, sur le commit `83e3668`.
 `claude/vas-y-8hjt4t`. Le changement est un réglage GitHub, hors de portée des
 outils disponibles ici. À basculer par MIKE (*Settings → Branches*).
 
-### 4. Relecture juridique (à ouvrir au lot 3)
+### 4. Espace vendeuse non traduit
+
+`src/app/app/` est écrit en français en dur, y compris les libellés ajoutés au
+lot 1. Ce n'est pas conforme à la lettre de `CLAUDE.md` (« toute chaîne visible
+passe par `i18n.ts` »), mais c'est la convention de tout l'espace vendeuse
+depuis la V1. À trancher : soit on assume que l'espace vendeuse est
+francophone, soit un lot dédié le traduit. Les textes **acheteuse**, eux, sont
+intégralement bilingues.
+
+### 5. Relecture juridique (à ouvrir au lot 3)
 
 Les pages légales rédigées au lot 3 **devront être relues par un humain**
 avant l'ouverture au public. Elles seront écrites de bonne foi, mais pas par

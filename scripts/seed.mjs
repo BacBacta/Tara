@@ -35,10 +35,14 @@ ins("sellers", { id: kevinId, phone: "237677554433", name: "Kevin M.", lang: "en
 const shopNadia = id(), shopKevin = id();
 ins("shops", { id: shopNadia, seller_id: nadiaId, slug: "nadia-friperie-237",
   name: "Nadia Friperie 237", city: "Douala", momo_enabled: 1, plan: "paid",
-  plan_expires_at: daysAgo(-30) });
+  plan_expires_at: daysAgo(-30),
+  // Mode direct : le cas d'une vraie vendeuse sans contrat agrégateur.
+  payment_mode: "direct", momo_number: "237691882210", momo_operator: "mtn" });
 ins("shops", { id: shopKevin, seller_id: kevinId, slug: "kev-sneakers",
-  name: "Kev Sneakers Store", city: "Yaoundé", momo_enabled: 0, plan: "free",
-  plan_expires_at: null });
+  name: "Kev Sneakers Store", city: "Yaoundé", momo_enabled: 1, plan: "free",
+  plan_expires_at: null,
+  // Mode agrégateur : garde le parcours passerelle démontrable.
+  payment_mode: "agregateur", momo_number: null, momo_operator: "orange" });
 
 const products = [
   [shopNadia, "Robe wax cintrée — tissu Vlisco", 8500,
