@@ -5,9 +5,9 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-27, fin du lot 3.
+**Dernière mise à jour** : 2026-08-27, fin du lot 4.
 **État du code** : V1+V2 complets, fournisseurs simulés, base SQLite.
-95 tests verts, build sans erreur.
+95 tests SQLite + 8 tests PostgreSQL, build sans erreur.
 
 ---
 
@@ -38,8 +38,8 @@ décidé et ce qui reste à trancher.
 - [x] **Lot 3 — Ce qu'un site public doit avoir** — CGU, mentions légales,
       politique de confidentialité (URL stable `/confidentialite`), aperçu OG
       généré à la volée, 404/500, robots.txt, sitemap.
-- [ ] **Lot 4 — PostgreSQL** — dialecte selon `DATABASE_URL`, portage des
-      migrations, preuve de R3 et R4 sur PostgreSQL. **Avant** le déploiement.
+- [x] **Lot 4 — PostgreSQL** — dialecte selon `DATABASE_URL`, migrations
+      traduites à la volée, R3 et R4 **prouvés sur un vrai PostgreSQL 16**.
 - [ ] **Lot 5 — Déploiement** — systemd, Nginx/TLS, `deploy.sh`, sauvegardes.
 - [ ] **Lot 6 — Le pré-vol** — `scripts/preflight.mjs`, checklist humaine.
 - [ ] **Lot 7 — Mesurer le pilote** — écran admin « Pilote », 4 chiffres.
@@ -73,6 +73,11 @@ décidé et ce qui reste à trancher.
 | 2026-08-27 | Lot 3 : si le rendu du texte échoue, l'image tombe sur un aplat de couleur au lieu d'une erreur 500. | Un aperçu terne vaut mieux qu'un lien cassé dans WhatsApp. |
 | 2026-08-27 | Lot 3 : ajout d'une liste de **slugs réservés** (`src/lib/reserved.ts`). | Trou préexistant : une boutique nommée « admin » ou « creer » était masquée par la route racine du même nom. Mes trois nouvelles pages aggravaient le risque. |
 | 2026-08-27 | Lot 3 : pages légales en **français seulement**. | Traduire un texte juridique non encore relu doublerait la charge de relecture. À reprendre si le pilote vise des vendeuses anglophones. |
+| 2026-08-27 | Lot 4 : les dates restent en **TEXT** au format `YYYY-MM-DD HH:MM:SS` (UTC) sur les deux moteurs, via `to_char(...)` et non `CURRENT_TIMESTAMP`. | Le code métier compare les dates comme des chaînes. `CURRENT_TIMESTAMP` ajouterait fraction de seconde et fuseau, cassant ces comparaisons. Format vérifié identique à l'octet près. |
+| 2026-08-27 | Lot 4 : les colonnes booléennes restent des `INTEGER 0/1`, **pas** des `BOOLEAN`. | Le code compare à `1` (`momo_enabled === 1`) partout. Le README conseillait l'inverse : conseil corrigé, il aurait cassé l'application. |
+| 2026-08-27 | Lot 4 : une seule série de migrations, traduite à la volée par `scripts/sql-portable.mjs`. | Deux jeux de fichiers SQL divergeraient. La seule construction non portable était `datetime('now')`. |
+| 2026-08-27 | Lot 4 : les tests PostgreSQL sont **ignorés** sans `TEST_DATABASE_URL`, avec un avertissement explicite. | Un test de concurrence qui ne tourne que sur SQLite ne prouve rien : SQLite sérialise les écritures. Mieux vaut un test ignoré qu'une fausse assurance. |
+| 2026-08-27 | Lot 4 : `grantSubscription` rattrape désormais la violation d'unicité. | Trou du lot 2 : sous course, deux activations passaient le SELECT et la seconde levait une erreur non gérée. La garde est en base ; le code se contente de la traduire. |
 | 2026-08-27 | Le tag `v1.0-mock` reste **local**. | L'environnement d'exécution refuse le push des refs de tags (branches acceptées). Action reportée à MIKE. |
 
 ---
@@ -110,7 +115,15 @@ passent). À créer côté GitHub par MIKE, sur le commit `83e3668`.
 `claude/vas-y-8hjt4t`. Le changement est un réglage GitHub, hors de portée des
 outils disponibles ici. À basculer par MIKE (*Settings → Branches*).
 
-### 4. Polices sur le serveur de production
+### 4. Le pool PostgreSQL n'est pas fermé proprement
+
+`src/lib/db.ts` crée un `Pool` conservé dans un singleton global. Il n'y a
+aucun `destroy()` à l'arrêt du processus. En pratique systemd tue le
+processus et PostgreSQL récupère les connexions, mais un arrêt propre
+(`SIGTERM` → `db.destroy()`) serait plus correct. À traiter au lot 5, avec le
+service systemd.
+
+### 5. Polices sur le serveur de production
 
 L'image d'aperçu est rendue par sharp, qui s'appuie sur les polices du
 système. Le conteneur de développement en a 59 ; **un VPS Ubuntu nu peut n'en
@@ -118,14 +131,14 @@ avoir aucune**, auquel cas les aperçus seraient des aplats de couleur sans
 texte. À installer au lot 5 : `apt install fonts-dejavu-core`. Le code ne
 plante pas dans ce cas, mais l'aperçu perd tout son intérêt.
 
-### 5. Pages légales en français seulement
+### 6. Pages légales en français seulement
 
 Une boutique de démonstration (`kev-sneakers`) est déjà en anglais, et le
 Cameroun est bilingue. Les pages légales, elles, ne sont qu'en français. À
 trancher : traduire après la relecture juridique, ou assumer le français
 comme langue juridique de référence.
 
-### 6. Espace vendeuse non traduit
+### 7. Espace vendeuse non traduit
 
 `src/app/app/` est écrit en français en dur, y compris les libellés ajoutés au
 lot 1. Ce n'est pas conforme à la lettre de `CLAUDE.md` (« toute chaîne visible
@@ -134,7 +147,7 @@ depuis la V1. À trancher : soit on assume que l'espace vendeuse est
 francophone, soit un lot dédié le traduit. Les textes **acheteuse**, eux, sont
 intégralement bilingues.
 
-### 7. Relecture juridique — OUVERTE (lot 3)
+### 8. Relecture juridique — OUVERTE (lot 3)
 
 Les pages légales rédigées au lot 3 **devront être relues par un humain**
 avant l'ouverture au public. Elles seront écrites de bonne foi, mais pas par
