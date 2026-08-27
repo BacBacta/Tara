@@ -3,6 +3,7 @@
 // différemment — l'adaptation se fera dans le provider concerné).
 import { NextRequest, NextResponse } from "next/server";
 import { processPaymentWebhook, webhookInput } from "@/lib/payments";
+import { processSubscriptionWebhook } from "@/lib/subscriptions";
 
 export async function POST(req: NextRequest) {
   const secret = process.env.PAYMENT_WEBHOOK_SECRET;
@@ -21,7 +22,10 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
   }
-  const result = await processPaymentWebhook(parsed.data, raw);
+  // Références "sub_…" → abonnements ; sinon → paiements de commandes.
+  const result = parsed.data.provider_ref.startsWith("sub_")
+    ? await processSubscriptionWebhook(parsed.data, raw)
+    : await processPaymentWebhook(parsed.data, raw);
   // Toujours 200 pour un doublon : l'agrégateur ne doit pas réessayer.
   return NextResponse.json({ ok: true, applied: result.applied });
 }

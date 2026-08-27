@@ -9,8 +9,9 @@ export async function POST(req: NextRequest) {
   const session = readSession();
   if (!session) return NextResponse.redirect(`${base}/creer`, 303);
   const shop = await getShopBySeller(session.sellerId);
-  if (!shop) return NextResponse.redirect(`${base}/creer/boutique`, 303);
+  if (!shop) return NextResponse.redirect(`${base}/creer`, 303);
 
+  // Palier gratuit : blocage du 11e article → écran d'upgrade
   if (!(await canAddProduct(shop))) {
     return NextResponse.redirect(`${base}/app/upgrade?from=limit`, 303);
   }
@@ -22,8 +23,8 @@ export async function POST(req: NextRequest) {
     video_url: form.get("video_url") ?? "",
   });
   if (!parsed.success) {
-    return NextResponse.redirect(`${base}/creer/article?err=1`, 303);
+    return NextResponse.redirect(`${base}/app/articles?err=1`, 303);
   }
   await createProduct(shop.id, parsed.data, form.get("photo"));
-  return NextResponse.redirect(`${base}/creer/fini`, 303);
+  return NextResponse.redirect(`${base}/app/articles`, 303);
 }

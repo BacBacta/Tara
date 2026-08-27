@@ -121,8 +121,21 @@ export interface OtpCodesTable {
   created_at: Generated<string>;
 }
 
+export interface SubPaymentsTable {
+  id: string;
+  subscription_id: string;
+  provider: string;
+  provider_ref: string;
+  operator: string | null;
+  amount: number;
+  status: Generated<string>;
+  raw_webhook_json: string | null;
+  created_at: Generated<string>;
+}
+
 export interface DB {
   otp_codes: OtpCodesTable;
+  sub_payments: SubPaymentsTable;
   sellers: SellersTable;
   shops: ShopsTable;
   products: ProductsTable;
