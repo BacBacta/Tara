@@ -1,5 +1,6 @@
 import { db, newId } from "./db";
 import { slugify } from "./format";
+import { isReservedSlug } from "./reserved";
 
 export async function upsertSellerByPhone(phone: string, lang: "fr" | "en" = "fr") {
   const existing = await db
@@ -27,14 +28,15 @@ export async function getShopBySeller(sellerId: string) {
 /** Slug unique : base, base-2, base-3… */
 export async function uniqueSlug(name: string): Promise<string> {
   const base = slugify(name) || "ma-boutique";
-  let candidate = base;
+  // un slug réservé serait masqué par une route racine : on le décale
+  let candidate = isReservedSlug(base) ? `${base}-boutique` : base;
   for (let i = 2; i < 50; i++) {
     const taken = await db
       .selectFrom("shops")
       .select("id")
       .where("slug", "=", candidate)
       .executeTakeFirst();
-    if (!taken) return candidate;
+    if (!taken && !isReservedSlug(candidate)) return candidate;
     candidate = `${base}-${i}`;
   }
   return `${base}-${Date.now().toString(36)}`;

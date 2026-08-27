@@ -90,6 +90,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: `${fcfa(data.product.price_fcfa)} · ${data.shop.name} · Tara`,
       url: `${base}/${data.shop.slug}/p/${data.product.id}`,
       type: "website",
+      siteName: "Tara",
+      images: [
+        {
+          url: `${base}/${data.shop.slug}/og?p=${data.product.id}`,
+          width: 1200,
+          height: 630,
+          alt: data.product.name,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: data.product.name,
+      description: `${fcfa(data.product.price_fcfa)} · ${data.shop.name} · Tara`,
+      images: [`${base}/${data.shop.slug}/og?p=${data.product.id}`],
     },
   };
 }

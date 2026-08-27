@@ -5,9 +5,23 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-27, fin du lot 2.
+**Dernière mise à jour** : 2026-08-27, fin du lot 3.
 **État du code** : V1+V2 complets, fournisseurs simulés, base SQLite.
-84 tests verts, build sans erreur.
+95 tests verts, build sans erreur.
+
+---
+
+> ## ⚠️ À LIRE AVANT TOUTE OUVERTURE AU PUBLIC
+>
+> **Les pages légales doivent être relues par un humain.** `/cgu`,
+> `/mentions-legales` et `/confidentialite` ont été rédigées de bonne foi et
+> relues contre R1, **mais je ne suis pas juriste** et elles engagent Tara au
+> Cameroun.
+>
+> Elles contiennent des marqueurs `[À COMPLÉTER]` **visibles à l'écran** :
+> raison sociale, RCCM, NIU, siège, hébergeur, adresse de contact. Le site ne
+> doit pas ouvrir tant qu'ils sont là. Le pré-vol du lot 6 devra en faire un
+> point de contrôle bloquant.
 
 ---
 
@@ -21,8 +35,9 @@ décidé et ce qui reste à trancher.
 - [x] **Lot 2 — Encaissement de l'abonnement, à la main** — activation manuelle
       depuis le back-office (N mois, référence MoMo, note), période offerte
       distinguée du payé, journal d'audit, écran admin enrichi.
-- [ ] **Lot 3 — Ce qu'un site public doit avoir** — pages légales, aperçu OG,
-      404/500, robots.txt, sitemap.
+- [x] **Lot 3 — Ce qu'un site public doit avoir** — CGU, mentions légales,
+      politique de confidentialité (URL stable `/confidentialite`), aperçu OG
+      généré à la volée, 404/500, robots.txt, sitemap.
 - [ ] **Lot 4 — PostgreSQL** — dialecte selon `DATABASE_URL`, portage des
       migrations, preuve de R3 et R4 sur PostgreSQL. **Avant** le déploiement.
 - [ ] **Lot 5 — Déploiement** — systemd, Nginx/TLS, `deploy.sh`, sauvegardes.
@@ -53,6 +68,11 @@ décidé et ce qui reste à trancher.
 | 2026-08-27 | Lot 2 : l'idempotence de l'activation manuelle repose sur un **index unique partiel** `(shop_id, payment_ref)`. | Même philosophie que R3 : la garde est en base, pas dans le code applicatif. Les périodes sans référence ne sont pas contraintes. |
 | 2026-08-27 | Lot 2 : un abonnement **payé** exige une référence de transaction ; une période **offerte** non. | Un encaissement sans référence serait intraçable au moment de rapprocher les comptes. |
 | 2026-08-27 | Lot 2 : `nextPeriod()` et `applyPeriodToShop()` sont partagés par l'agrégateur et l'activation manuelle. | Exigence du programme : un seul chemin d'abonnement, pas deux qui divergent. |
+| 2026-08-27 | Lot 3 : l'image d'aperçu est générée par **sharp**, déjà présent pour les photos d'articles. | Aucune dépendance nouvelle. `next/og` (satori) aurait alourdi le build pour le même résultat. Le SVG est converti en PNG car WhatsApp et TikTok n'affichent pas les aperçus SVG. |
+| 2026-08-27 | Lot 3 : la taille de police de l'aperçu s'adapte à la longueur du titre. | Une police fixe faisait déborder les noms d'articles longs hors du cadre — constaté à l'œil sur l'image rendue, pas seulement en test. |
+| 2026-08-27 | Lot 3 : si le rendu du texte échoue, l'image tombe sur un aplat de couleur au lieu d'une erreur 500. | Un aperçu terne vaut mieux qu'un lien cassé dans WhatsApp. |
+| 2026-08-27 | Lot 3 : ajout d'une liste de **slugs réservés** (`src/lib/reserved.ts`). | Trou préexistant : une boutique nommée « admin » ou « creer » était masquée par la route racine du même nom. Mes trois nouvelles pages aggravaient le risque. |
+| 2026-08-27 | Lot 3 : pages légales en **français seulement**. | Traduire un texte juridique non encore relu doublerait la charge de relecture. À reprendre si le pilote vise des vendeuses anglophones. |
 | 2026-08-27 | Le tag `v1.0-mock` reste **local**. | L'environnement d'exécution refuse le push des refs de tags (branches acceptées). Action reportée à MIKE. |
 
 ---
@@ -90,7 +110,22 @@ passent). À créer côté GitHub par MIKE, sur le commit `83e3668`.
 `claude/vas-y-8hjt4t`. Le changement est un réglage GitHub, hors de portée des
 outils disponibles ici. À basculer par MIKE (*Settings → Branches*).
 
-### 4. Espace vendeuse non traduit
+### 4. Polices sur le serveur de production
+
+L'image d'aperçu est rendue par sharp, qui s'appuie sur les polices du
+système. Le conteneur de développement en a 59 ; **un VPS Ubuntu nu peut n'en
+avoir aucune**, auquel cas les aperçus seraient des aplats de couleur sans
+texte. À installer au lot 5 : `apt install fonts-dejavu-core`. Le code ne
+plante pas dans ce cas, mais l'aperçu perd tout son intérêt.
+
+### 5. Pages légales en français seulement
+
+Une boutique de démonstration (`kev-sneakers`) est déjà en anglais, et le
+Cameroun est bilingue. Les pages légales, elles, ne sont qu'en français. À
+trancher : traduire après la relecture juridique, ou assumer le français
+comme langue juridique de référence.
+
+### 6. Espace vendeuse non traduit
 
 `src/app/app/` est écrit en français en dur, y compris les libellés ajoutés au
 lot 1. Ce n'est pas conforme à la lettre de `CLAUDE.md` (« toute chaîne visible
@@ -99,7 +134,7 @@ depuis la V1. À trancher : soit on assume que l'espace vendeuse est
 francophone, soit un lot dédié le traduit. Les textes **acheteuse**, eux, sont
 intégralement bilingues.
 
-### 5. Relecture juridique (à ouvrir au lot 3)
+### 7. Relecture juridique — OUVERTE (lot 3)
 
 Les pages légales rédigées au lot 3 **devront être relues par un humain**
 avant l'ouverture au public. Elles seront écrites de bonne foi, mais pas par
