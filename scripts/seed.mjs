@@ -10,9 +10,16 @@ const id = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 1
 const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString();
 
 // reset dev
-for (const t of ["visits","payments","orders","variants","product_media","products","subscriptions","shops","sellers","audit_log","admin_users"]) {
-  db.exec(`DELETE FROM ${t}`);
-}
+// ordre inverse des dépendances (clés étrangères actives)
+const TABLES = [
+  "drop_alerts", "drop_products", "drops",
+  "announcements", "followers", "reviews",
+  "video_products", "videos", "external_identities", "webhook_events",
+  "visits", "sub_payments", "payments", "subscriptions", "orders",
+  "variants", "product_media", "products",
+  "shops", "otp_codes", "sellers", "audit_log", "admin_users",
+];
+for (const t of TABLES) db.exec(`DELETE FROM ${t}`);
 
 const ins = (table, obj) => {
   const keys = Object.keys(obj);
@@ -86,8 +93,8 @@ for (let i = 0; i < 40; i++) {
 }
 
 const salt = randomBytes(16).toString("hex");
-const adminHash = `${salt}:${scryptSync("bioshop2026", salt, 64).toString("hex")}`;
-ins("admin_users", { id: id(), email: "admin@bioshop.cm",
+const adminHash = `${salt}:${scryptSync("tara2026", salt, 64).toString("hex")}`;
+ins("admin_users", { id: id(), email: "admin@tara.shop",
   password_hash: adminHash, role: "admin" });
 
 console.log("Seed OK — boutiques : nadia-friperie-237 et kev-sneakers");

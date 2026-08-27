@@ -99,7 +99,7 @@ export default async function AdminHome({ searchParams }: { searchParams: { ok?:
   return (
     <main className="mx-auto max-w-4xl px-4 py-6">
       <header className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-lg font-extrabold">Administration Bio-Shop</h1>
+        <h1 className="text-lg font-extrabold">Administration Tara</h1>
         <div className="flex items-center gap-3 text-xs">
           <span className="text-gray-500">{admin.email}</span>
           <a href="/admin/export" className="font-extrabold text-indigo9 underline">

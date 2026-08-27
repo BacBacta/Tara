@@ -4,9 +4,9 @@ import { isPaidActive, FREE_PRODUCT_LIMIT } from "@/lib/plan";
 
 describe("mots de passe administrateur (scrypt)", () => {
   it("vérifie le bon mot de passe et rejette les autres", () => {
-    const stored = hashPassword("bioshop2026");
-    expect(verifyPassword("bioshop2026", stored)).toBe(true);
-    expect(verifyPassword("bioshop2027", stored)).toBe(false);
+    const stored = hashPassword("tara2026");
+    expect(verifyPassword("tara2026", stored)).toBe(true);
+    expect(verifyPassword("tara2027", stored)).toBe(false);
     expect(verifyPassword("", stored)).toBe(false);
   });
   it("deux hachages du même mot de passe diffèrent (sel aléatoire)", () => {

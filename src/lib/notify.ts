@@ -57,7 +57,7 @@ class SmsNotifyProvider implements NotifyProvider {
 
   private readonly url = process.env.SMS_API_URL ?? "";
   private readonly key = process.env.SMS_API_KEY ?? "";
-  private readonly sender = process.env.SMS_SENDER_ID ?? "BIOSHOP";
+  private readonly sender = process.env.SMS_SENDER_ID ?? "TARA";
 
   /** Un SMS = 160 caractères : on raccourcit plutôt que de payer 2 segments. */
   private compose(body: string, link?: string): string {

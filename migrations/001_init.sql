@@ -1,4 +1,4 @@
--- Bio-Shop — schéma V1 (SQLite dev / compatible PostgreSQL prod).
+-- Tara — schéma V1 (SQLite dev / compatible PostgreSQL prod).
 -- Les champs à valeurs contraintes (plan, status…) sont des TEXT validés par Zod.
 
 CREATE TABLE IF NOT EXISTS sellers (

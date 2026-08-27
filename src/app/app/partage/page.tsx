@@ -49,7 +49,7 @@ export default async function Partage() {
         </p>
         <a
           href="/app/partage/qr"
-          download={`bioshop-${shop.slug}.png`}
+          download={`tara-${shop.slug}.png`}
           className="mt-3 inline-block rounded-2xl bg-indigo9 px-5 py-3 text-sm font-extrabold text-white"
         >
           ⬇ Télécharger le QR

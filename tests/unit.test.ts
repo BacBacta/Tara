@@ -38,7 +38,7 @@ describe("orderMessage", () => {
   it("contient produit, variante, prix et n° de commande (FR)", () => {
     const msg = orderMessage({
       productName: "Robe wax", variant: "M", qty: 2, priceLabel: "17 000 F",
-      productUrl: "https://bioshop.cm/nadia/p/1", orderId: "B-1234", lang: "fr",
+      productUrl: "https://tara.shop/nadia/p/1", orderId: "B-1234", lang: "fr",
     });
     expect(msg).toContain("Robe wax (M) × 2");
     expect(msg).toContain("17 000 F");

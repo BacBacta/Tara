@@ -66,7 +66,7 @@ export default async function TikTokPage({ searchParams }: { searchParams: { ok?
           </button>
           <p className="mt-2 text-[11px] text-gray-500">
             Autorisations demandées : profil public, statistiques, liste de tes vidéos
-            publiques. Bio-Shop ne publie jamais à ta place.
+            publiques. Tara ne publie jamais à ta place.
           </p>
         </form>
       )}

@@ -18,7 +18,7 @@ export async function GET() {
   return new NextResponse(new Uint8Array(png), {
     headers: {
       "content-type": "image/png",
-      "content-disposition": `attachment; filename="bioshop-${shop.slug}.png"`,
+      "content-disposition": `attachment; filename="tara-${shop.slug}.png"`,
       "cache-control": "private, max-age=3600",
     },
   });

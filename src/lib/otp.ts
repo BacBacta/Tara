@@ -35,7 +35,7 @@ class SmsOtpProvider implements OtpProvider {
     await getNotifyProvider().send({
       phone,
       template: "otp",
-      body: `Ton code Bio-Shop : ${code} (valable 10 minutes).`,
+      body: `Ton code Tara : ${code} (valable 10 minutes).`,
     });
   }
 }

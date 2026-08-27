@@ -85,7 +85,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: `${fcfa(data.product.price_fcfa)} · ${data.shop.name}`,
     openGraph: {
       title: data.product.name,
-      description: `${fcfa(data.product.price_fcfa)} · ${data.shop.name} · Bio-Shop`,
+      description: `${fcfa(data.product.price_fcfa)} · ${data.shop.name} · Tara`,
       url: `${base}/${data.shop.slug}/p/${data.product.id}`,
       type: "website",
     },

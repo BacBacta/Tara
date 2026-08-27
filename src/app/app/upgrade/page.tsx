@@ -15,7 +15,7 @@ export default async function Upgrade({
 
   return (
     <main className="mx-auto max-w-md px-5 pb-24 pt-8">
-      <h1 className="text-xl font-extrabold">Bio-Shop illimité ✨</h1>
+      <h1 className="text-xl font-extrabold">Tara illimité ✨</h1>
       {searchParams.from === "limit" && (
         <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
           Tu as atteint la limite de {FREE_PRODUCT_LIMIT} articles du palier gratuit.

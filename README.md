@@ -1,4 +1,4 @@
-# Bio-Shop — V1 + V2
+# Tara — V1 + V2
 
 La boutique des vendeuses TikTok du Cameroun : une mini-boutique web (PWA)
 accessible par un lien court placé dans la bio TikTok, des commandes qui
@@ -11,7 +11,7 @@ npm install
 cp .env.example .env            # puis renseigner SESSION_SECRET
 npm run db:migrate              # crée dev.db (SQLite) et applique migrations/
 npm run db:seed                 # 2 boutiques de démo + commandes + admin
-node scripts/create-admin.mjs admin@bioshop.cm motdepasse
+node scripts/create-admin.mjs admin@tara.shop motdepasse
 npm run dev                     # http://localhost:3000
 ```
 
@@ -75,11 +75,11 @@ Pour brancher l'agrégateur réel : écrire une classe qui implémente
 
 ```bash
 sudo apt install postgresql
-sudo -u postgres createuser bioshop -P
-sudo -u postgres createdb bioshop -O bioshop
+sudo -u postgres createuser tara -P
+sudo -u postgres createdb tara -O tara
 ```
 
-Dans `.env` : `DATABASE_URL="postgresql://bioshop:MOTDEPASSE@localhost:5432/bioshop"`.
+Dans `.env` : `DATABASE_URL="postgresql://tara:MOTDEPASSE@localhost:5432/tara"`.
 
 > Le code de `src/lib/db.ts` utilise le dialecte SQLite. Pour PostgreSQL :
 > `npm i pg`, remplacer `SqliteDialect` par `PostgresDialect` (`new Pool({ connectionString })`),
@@ -89,22 +89,22 @@ Dans `.env` : `DATABASE_URL="postgresql://bioshop:MOTDEPASSE@localhost:5432/bios
 ### 2. Application
 
 ```bash
-git clone <dépôt> /var/www/bioshop && cd /var/www/bioshop
+git clone <dépôt> /var/www/tara && cd /var/www/tara
 npm ci && npm run build
 npm run db:migrate
 node scripts/create-admin.mjs admin@votredomaine.cm '<mot de passe fort>'
 ```
 
-Service systemd `/etc/systemd/system/bioshop.service` :
+Service systemd `/etc/systemd/system/tara.service` :
 
 ```ini
 [Unit]
-Description=Bio-Shop
+Description=Tara
 After=network.target postgresql.service
 
 [Service]
-WorkingDirectory=/var/www/bioshop
-EnvironmentFile=/var/www/bioshop/.env
+WorkingDirectory=/var/www/tara
+EnvironmentFile=/var/www/tara/.env
 ExecStart=/usr/bin/npm start
 Restart=always
 User=www-data
@@ -117,7 +117,7 @@ WantedBy=multi-user.target
 
 ```nginx
 server {
-  server_name bioshop.cm;
+  server_name tara.shop;
   client_max_body_size 10M;            # uploads photo
   location / {
     proxy_pass http://127.0.0.1:3000;
@@ -128,13 +128,13 @@ server {
 }
 ```
 
-Certificat TLS : `sudo certbot --nginx -d bioshop.cm`.
+Certificat TLS : `sudo certbot --nginx -d tara.shop`.
 
 ### 4. Variables d'environnement de production
 
 ```
 NODE_ENV=production
-NEXT_PUBLIC_BASE_URL="https://bioshop.cm"
+NEXT_PUBLIC_BASE_URL="https://tara.shop"
 SESSION_SECRET="<32+ caractères aléatoires>"
 PAYMENT_WEBHOOK_SECRET="<secret partagé avec l'agrégateur>"
 PAYMENT_PROVIDER="simiz"          # plus jamais "mock" en production
@@ -142,7 +142,7 @@ OTP_PROVIDER="sms"                # passerelle SMS locale
 NOTIFY_PROVIDER="sms"             # mock | sms | whatsapp_cloud
 SMS_API_URL="<endpoint de la passerelle>"
 SMS_API_KEY="<cle>"
-SMS_SENDER_ID="BIOSHOP"
+SMS_SENDER_ID="TARA"
 PAYMENT_MOCK_AUTOCONFIRM=""       # DOIT rester vide en production
 NEXT_PUBLIC_TIKTOK_PIXEL_ID="<id du pixel>"
 ```
@@ -154,10 +154,10 @@ NEXT_PUBLIC_TIKTOK_PIXEL_ID="<id du pixel>"
 ### 5. Sauvegardes
 
 ```bash
-# /etc/cron.daily/bioshop-backup
-pg_dump -U bioshop bioshop | gzip > /var/backups/bioshop-$(date +%F).sql.gz
-find /var/backups -name 'bioshop-*.sql.gz' -mtime +30 -delete
-rsync -a /var/www/bioshop/public/uploads/ /var/backups/uploads/
+# /etc/cron.daily/tara-backup
+pg_dump -U tara tara | gzip > /var/backups/tara-$(date +%F).sql.gz
+find /var/backups -name 'tara-*.sql.gz' -mtime +30 -delete
+rsync -a /var/www/tara/public/uploads/ /var/backups/uploads/
 ```
 
 Tester la **restauration** au moins une fois avant la mise en production.

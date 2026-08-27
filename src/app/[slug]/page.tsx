@@ -87,7 +87,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!data) return {};
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   return {
-    title: `${data.shop.name} — Bio-Shop`,
+    title: `${data.shop.name} — Tara`,
     description: `${data.shop.city} · ${data.products.length} articles · Commande WhatsApp, paiement Mobile Money.`,
     openGraph: {
       title: data.shop.name,
@@ -275,7 +275,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
 
       {/* pied de page viral */}
       <footer className="mt-8 text-center text-[11px] text-gray-500">
-        {t(lang, "shop.createdWith")} <b className="text-indigo9">Bio·Shop</b>
+        {t(lang, "shop.createdWith")} <b className="text-indigo9">Tara</b>
         <div className="mt-2">
           <Link
             href="/creer"

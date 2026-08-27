@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Bio-Shop",
+  title: "Tara",
   description:
     "Ta boutique dans ta bio TikTok — commandes WhatsApp, paiement Mobile Money.",
 };

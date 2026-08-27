@@ -1,5 +1,5 @@
 "use client";
-// Étape 2 : le lien bioshop.cm/{slug} se génère en direct pendant la frappe.
+// Étape 2 : le lien tara.shop/{slug} se génère en direct pendant la frappe.
 import { useState } from "react";
 
 function slugify(input: string): string {

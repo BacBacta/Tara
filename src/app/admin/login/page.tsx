@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 export default function AdminLogin({ searchParams }: { searchParams: { err?: string } }) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6">
-      <h1 className="text-lg font-extrabold">Bio-Shop — Administration</h1>
+      <h1 className="text-lg font-extrabold">Tara — Administration</h1>
       {searchParams.err && (
         <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
           Identifiants incorrects.
@@ -13,7 +13,7 @@ export default function AdminLogin({ searchParams }: { searchParams: { err?: str
         <input
           name="email"
           type="email"
-          placeholder="admin@bioshop.cm"
+          placeholder="admin@tara.shop"
           required
           className="rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-bold focus:border-indigo9 focus:outline-none"
         />

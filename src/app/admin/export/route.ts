@@ -71,7 +71,7 @@ export async function GET() {
   return new NextResponse(csv, {
     headers: {
       "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename="bioshop-boutiques.csv"`,
+      "content-disposition": `attachment; filename="tara-boutiques.csv"`,
     },
   });
 }
