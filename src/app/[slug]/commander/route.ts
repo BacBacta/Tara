@@ -6,11 +6,16 @@ import { createOrder, createOrderInput } from "@/lib/orders";
 import { waLink, orderMessage } from "@/lib/whatsapp";
 import { fcfa } from "@/lib/format";
 import { normalizeLang } from "@/lib/i18n";
+import { clientIp, rateLimit } from "@/lib/ratelimit";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { slug: string } }
 ) {
+  if (!rateLimit(`order:${clientIp(req.headers)}`, 30, 600).allowed) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
   const shop = await db
     .selectFrom("shops")
     .innerJoin("sellers", "sellers.id", "shops.seller_id")

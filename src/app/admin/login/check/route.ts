@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { audit, makeAdminCookie, verifyPassword } from "@/lib/admin";
+import { clientIp, rateLimit } from "@/lib/ratelimit";
 
 const input = z.object({ email: z.string().email(), password: z.string().min(6).max(200) });
 
 export async function POST(req: NextRequest) {
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  if (!rateLimit(`login:${clientIp(req.headers)}`, 10, 600).allowed) {
+    return NextResponse.redirect(`${base}/admin/login?err=1`, 303);
+  }
+
   const form = await req.formData();
   const parsed = input.safeParse({
     email: form.get("email"),

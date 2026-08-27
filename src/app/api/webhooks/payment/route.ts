@@ -4,8 +4,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processPaymentWebhook, webhookInput } from "@/lib/payments";
 import { processSubscriptionWebhook } from "@/lib/subscriptions";
+import { clientIp, rateLimit } from "@/lib/ratelimit";
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimit(`wh:${clientIp(req.headers)}`, 120, 60);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "retry-after": String(rl.retryAfterSeconds) } }
+    );
+  }
+
   const secret = process.env.PAYMENT_WEBHOOK_SECRET;
   if (!secret || req.headers.get("x-webhook-secret") !== secret) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
