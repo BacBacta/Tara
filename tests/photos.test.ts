@@ -94,8 +94,9 @@ describe("rendu dans les pages publiques", () => {
   });
 
   it("les dimensions sont déclarées, pour que la grille ne saute pas en 3G", () => {
-    expect(vitrine).toMatch(/width=\{400\}[\s\S]{0,60}height=\{400\}/);
+    // portrait 3:4 en grille, 4:5 sur la fiche — les formats de la mode
+    expect(vitrine).toMatch(/width=\{600\}[\s\S]{0,60}height=\{800\}/);
     expect(vitrine).toContain('loading="lazy"');
-    expect(fiche).toMatch(/width=\{800\}[\s\S]{0,60}height=\{600\}/);
+    expect(fiche).toMatch(/width=\{800\}[\s\S]{0,60}height=\{1000\}/);
   });
 });
