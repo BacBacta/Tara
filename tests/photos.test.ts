@@ -7,7 +7,7 @@ import SQLite from "better-sqlite3";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { DB } from "@/lib/schema";
-import { photosByProduct } from "@/lib/photos";
+import { photosByProduct, photoSrcSet, photoVariant, PHOTO_WIDTHS } from "@/lib/photos";
 
 function memoryDb(): Kysely<DB> {
   const database = new SQLite(":memory:");
@@ -69,6 +69,38 @@ describe("lecture des photos", () => {
   });
 });
 
+describe("variantes responsives", () => {
+  it("dérive les URL sœurs par convention, disque comme Blob", () => {
+    expect(photoVariant("/uploads/abc.webp", 320)).toBe("/uploads/abc-320.webp");
+    expect(photoVariant("/uploads/abc.webp", 800)).toBe("/uploads/abc.webp");
+    expect(photoVariant("https://x.blob.vercel-storage.com/articles/abc.webp", 560))
+      .toBe("https://x.blob.vercel-storage.com/articles/abc-560.webp");
+  });
+
+  it("le srcset couvre les trois largeurs générées à l'envoi", () => {
+    const set = photoSrcSet("/demo/p0.webp");
+    for (const w of PHOTO_WIDTHS) expect(set).toContain(`${w}w`);
+    expect(set).toContain("/demo/p0-320.webp 320w");
+    expect(set).toContain("/demo/p0.webp 800w");
+  });
+});
+
+describe("envoi : trois tailles écrites", () => {
+  it("createProduct confie 800, 560 et 320 px au stockage", () => {
+    // Servir 800 px à une vignette de 180 px gaspillait le forfait de
+    // l'acheteuse : le pipeline d'envoi doit produire les trois tailles.
+    const src = readFileSync(join(process.cwd(), "src/lib/products.ts"), "utf8");
+    expect(src).toContain("save(800, `${productId}.webp`)");
+    expect(src).toContain("save(560, `${productId}-560.webp`)");
+    expect(src).toContain("save(320, `${productId}-320.webp`)");
+  });
+
+  it("le seed génère les mêmes variantes pour la démo", () => {
+    const seed = readFileSync(join(process.cwd(), "scripts/seed.mjs"), "utf8");
+    expect(seed).toContain("[560, 320]");
+  });
+});
+
 describe("rendu dans les pages publiques", () => {
   const vitrine = readFileSync(join(process.cwd(), "src/app/[slug]/page.tsx"), "utf8");
   const fiche = readFileSync(join(process.cwd(), "src/app/[slug]/p/[id]/page.tsx"), "utf8");
@@ -93,7 +125,16 @@ describe("rendu dans les pages publiques", () => {
     }
   });
 
-  it("les dimensions sont déclarées, pour que la grille ne saute pas en 3G", () => {
+  it("la grille et la fiche servent un srcset — jamais le 800 px seul", () => {
+    expect(vitrine).toContain("photoSrcSet");
+    expect(vitrine).toMatch(/sizes="\(max-width: 448px\) 50vw/);
+    expect(fiche).toContain("photoSrcSet");
+    expect(fiche).toContain('fetchPriority="high"');
+    // le visuel principal part en tête de téléchargement
+    expect(fiche).toContain('preload(photo, { as: "image"');
+  });
+
+  it("les dimensions sont déclarées, pour que la grille ne saute pas", () => {
     // portrait 3:4 en grille, 4:5 sur la fiche — les formats de la mode
     expect(vitrine).toMatch(/width=\{600\}[\s\S]{0,60}height=\{800\}/);
     expect(vitrine).toContain('loading="lazy"');

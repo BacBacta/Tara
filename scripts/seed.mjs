@@ -173,8 +173,13 @@ function tissuWax(index) {
   </svg>`;
 }
 
+// Trois tailles par visuel, comme le pipeline d'envoi réel (srcset).
 for (const { index } of demoPhotos) {
-  await sharp(Buffer.from(tissuWax(index))).webp({ quality: 82 }).toFile(join(demoDir, `p${index}.webp`));
+  const svg = Buffer.from(tissuWax(index));
+  await sharp(svg).webp({ quality: 82 }).toFile(join(demoDir, `p${index}.webp`));
+  for (const w of [560, 320]) {
+    await sharp(svg).resize({ width: w }).webp({ quality: 78 }).toFile(join(demoDir, `p${index}-${w}.webp`));
+  }
 }
 
 console.log(`Seed OK — boutiques : nadia-friperie-237 et kev-sneakers (${demoPhotos.length} photos de démo générées)`);
