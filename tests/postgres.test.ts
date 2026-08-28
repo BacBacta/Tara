@@ -43,8 +43,16 @@ async function resetSchema() {
   await client.connect();
   try {
     await client.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
+    await client.query(`CREATE TABLE schema_migrations (
+      name TEXT PRIMARY KEY,
+      applied_at TEXT NOT NULL DEFAULT (to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS'))
+    )`);
     for (const f of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
       await client.query(toDialect(readFileSync(join(dir, f), "utf8"), "postgres"));
+      // On renseigne le suivi comme le ferait scripts/migrate.mjs : sans lui,
+      // un « npm run db:migrate » lancé après les tests tenterait de tout
+      // rejouer et échouerait sur un ALTER TABLE déjà appliqué.
+      await client.query("INSERT INTO schema_migrations (name) VALUES ($1)", [f]);
     }
   } finally {
     await client.end();

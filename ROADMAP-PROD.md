@@ -5,9 +5,9 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-27, fin du lot 4.
+**Dernière mise à jour** : 2026-08-28, fin du lot 5.
 **État du code** : V1+V2 complets, fournisseurs simulés, base SQLite.
-95 tests SQLite + 8 tests PostgreSQL, build sans erreur.
+107 tests SQLite + 8 tests PostgreSQL, build sans erreur.
 
 ---
 
@@ -40,7 +40,10 @@ décidé et ce qui reste à trancher.
       généré à la volée, 404/500, robots.txt, sitemap.
 - [x] **Lot 4 — PostgreSQL** — dialecte selon `DATABASE_URL`, migrations
       traduites à la volée, R3 et R4 **prouvés sur un vrai PostgreSQL 16**.
-- [ ] **Lot 5 — Déploiement** — systemd, Nginx/TLS, `deploy.sh`, sauvegardes.
+- [x] **Lot 5 — Déploiement** — service systemd durci, Nginx/TLS,
+      `deploy.sh` qui ne redémarre jamais sur migration échouée, sauvegarde et
+      restauration **exécutées** contre PostgreSQL, sonde `/api/sante`.
+      Fichiers produits, **aucun serveur contacté** : c'est MIKE qui exécute.
 - [ ] **Lot 6 — Le pré-vol** — `scripts/preflight.mjs`, checklist humaine.
 - [ ] **Lot 7 — Mesurer le pilote** — écran admin « Pilote », 4 chiffres.
 
@@ -78,6 +81,11 @@ décidé et ce qui reste à trancher.
 | 2026-08-27 | Lot 4 : une seule série de migrations, traduite à la volée par `scripts/sql-portable.mjs`. | Deux jeux de fichiers SQL divergeraient. La seule construction non portable était `datetime('now')`. |
 | 2026-08-27 | Lot 4 : les tests PostgreSQL sont **ignorés** sans `TEST_DATABASE_URL`, avec un avertissement explicite. | Un test de concurrence qui ne tourne que sur SQLite ne prouve rien : SQLite sérialise les écritures. Mieux vaut un test ignoré qu'une fausse assurance. |
 | 2026-08-27 | Lot 4 : `grantSubscription` rattrape désormais la violation d'unicité. | Trou du lot 2 : sous course, deux activations passaient le SELECT et la seconde levait une erreur non gérée. La garde est en base ; le code se contente de la traduire. |
+| 2026-08-28 | Lot 5 : la configuration Nginx ne pose **aucun** en-tête de sécurité. | `next.config.mjs` les pose déjà. Les dupliquer ferait appliquer l'intersection des deux CSP par le navigateur, cassant l'embed TikTok sans message lisible. Un test échoue si un en-tête apparaît des deux côtés. |
+| 2026-08-28 | Lot 5 : syntaxe `listen ... ssl http2;` et non `http2 on;`. | `http2 on;` n'existe qu'à partir de nginx 1.25 ; Ubuntu 22.04 et 24.04 livrent 1.18 et 1.24. Détecté par `nginx -t`, la configuration n'aurait pas démarré. |
+| 2026-08-28 | Lot 5 : `StartLimitBurst` / `StartLimitIntervalSec` placés dans `[Unit]`. | Depuis systemd 229 ces clés sont ignorées dans `[Service]`. Détecté par `systemd-analyze verify`. |
+| 2026-08-28 | Lot 5 : **pas** de fermeture explicite du pool PostgreSQL sur SIGTERM. | Question ouverte n°4 du lot 4, tranchée : fermer le pool pendant que Next draine ses requêtes en cours les ferait échouer. À l'arrêt, le processus meurt et PostgreSQL récupère ses connexions — le problème était cosmétique. `TimeoutStopSec=30` laisse Next drainer. |
+| 2026-08-28 | Lot 5 : surveillance par service externe gratuit, pas par script local seul. | Si le VPS tombe entièrement, une alerte hébergée sur ce même VPS ne part jamais. |
 | 2026-08-27 | Le tag `v1.0-mock` reste **local**. | L'environnement d'exécution refuse le push des refs de tags (branches acceptées). Action reportée à MIKE. |
 
 ---
@@ -115,13 +123,17 @@ passent). À créer côté GitHub par MIKE, sur le commit `83e3668`.
 `claude/vas-y-8hjt4t`. Le changement est un réglage GitHub, hors de portée des
 outils disponibles ici. À basculer par MIKE (*Settings → Branches*).
 
-### 4. Le pool PostgreSQL n'est pas fermé proprement
+### 4. Ce que le lot 5 n'a PAS pu vérifier — FERMÉE en partie
 
-`src/lib/db.ts` crée un `Pool` conservé dans un singleton global. Il n'y a
-aucun `destroy()` à l'arrêt du processus. En pratique systemd tue le
-processus et PostgreSQL récupère les connexions, mais un arrêt propre
-(`SIGTERM` → `db.destroy()`) serait plus correct. À traiter au lot 5, avec le
-service systemd.
+Ont été **réellement** validés ici : `nginx -t` (configuration complète, avec
+certificats auto-signés), `systemd-analyze verify`, `shellcheck` sur les trois
+scripts, et surtout **l'exécution de la sauvegarde puis de la restauration
+contre un vrai PostgreSQL**, compteurs à l'appui.
+
+N'ont **pas** pu l'être, faute de serveur : le certificat Let's Encrypt réel,
+le démarrage effectif du service systemd, `deploy.sh` de bout en bout, et le
+comportement sous charge. Ce sont les premières choses à éprouver quand le VPS
+existera.
 
 ### 5. Polices sur le serveur de production
 

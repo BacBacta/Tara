@@ -147,49 +147,87 @@ Sans `TEST_DATABASE_URL`, ces tests sont **ignorés** et le disent : un test de
 concurrence qui ne tournerait que sur SQLite ne prouverait rien, SQLite
 sérialisant les écritures avec un verrou global.
 
-### 2. Application
+### 2. Utilisateur, code et service
+
+Tara tourne sous un utilisateur dédié, sans privilèges, et ses secrets vivent
+hors du dépôt.
 
 ```bash
-git clone <dépôt> /var/www/tara && cd /var/www/tara
-npm ci && npm run build
-npm run db:migrate
-node scripts/create-admin.mjs admin@votredomaine.cm '<mot de passe fort>'
+# utilisateur de service (pas de connexion interactive)
+sudo adduser --system --group --home /var/www/tara --shell /usr/sbin/nologin tara
+
+# code
+sudo -u tara git clone https://github.com/BacBacta/Tara.git /var/www/tara
+cd /var/www/tara
+sudo -u tara npm ci
+sudo -u tara npm run build
+
+# secrets, HORS du dépôt, lisibles par le seul groupe tara
+sudo install -d -m 750 -o root -g tara /etc/tara
+sudo install -m 640 -o root -g tara .env.example /etc/tara/tara.env
+sudo nano /etc/tara/tara.env        # voir §4
+
+# schéma et compte administrateur
+sudo -u tara env $(grep -v '^#' /etc/tara/tara.env | xargs) npm run db:migrate
+sudo -u tara env $(grep -v '^#' /etc/tara/tara.env | xargs) \
+  node scripts/create-admin.mjs admin@tara.shop '<mot de passe fort>'
 ```
 
-Service systemd `/etc/systemd/system/tara.service` :
+Le service systemd est fourni : `deploy/tara.service`.
 
-```ini
-[Unit]
-Description=Tara
-After=network.target postgresql.service
+```bash
+# vérifiez d'abord le chemin de npm — la ligne ExecStart doit correspondre
+which npm
 
-[Service]
-WorkingDirectory=/var/www/tara
-EnvironmentFile=/var/www/tara/.env
-ExecStart=/usr/bin/npm start
-Restart=always
-User=www-data
-
-[Install]
-WantedBy=multi-user.target
+sudo cp deploy/tara.service /etc/systemd/system/tara.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now tara
+sudo systemctl status tara
 ```
 
-### 3. Reverse proxy Nginx
+Il tourne sous l'utilisateur `tara`, redémarre automatiquement, lit ses
+variables dans `/etc/tara/tara.env`, et le disque lui est en lecture seule sauf
+`.next/` et `public/uploads/`.
 
-```nginx
-server {
-  server_name tara.shop;
-  client_max_body_size 10M;            # uploads photo
-  location / {
-    proxy_pass http://127.0.0.1:3000;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;   # requis par le rate limiting
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
-}
+> `MemoryDenyWriteExecute` doit rester à `false` : Node compile son JIT à
+> l'exécution et refuserait de démarrer autrement.
+
+### 3. Reverse proxy Nginx et TLS
+
+La configuration est fournie : `deploy/tara.nginx.conf`.
+
+```bash
+sudo apt install nginx certbot
+sudo mkdir -p /var/www/certbot
+
+# 1) certificat AVANT d'activer les blocs HTTPS
+sudo certbot certonly --webroot -w /var/www/certbot -d tara.shop -d www.tara.shop
+
+# 2) mise en place
+sudo cp deploy/tara.nginx.conf /etc/nginx/sites-available/tara
+sudo ln -s /etc/nginx/sites-available/tara /etc/nginx/sites-enabled/tara
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-Certificat TLS : `sudo certbot --nginx -d tara.shop`.
+Ce que fait cette configuration : redirection HTTP → HTTPS, `www` vers le
+domaine nu, `client_max_body_size 10M` pour les photos, compression du texte,
+et surtout `X-Forwarded-For` — **sans lui, tout le trafic compterait pour une
+seule adresse IP et le premier visiteur épuiserait le quota de rate limiting
+de tout le monde.**
+
+> **La configuration Nginx ne pose volontairement aucun en-tête de sécurité.**
+> `next.config.mjs` pose déjà CSP, HSTS, `X-Frame-Options`,
+> `X-Content-Type-Options`, `Referrer-Policy` et `Permissions-Policy`. Les
+> ajouter aussi dans Nginx les dupliquerait : le navigateur appliquerait
+> l'intersection des deux CSP, et la moindre divergence entre les deux
+> fichiers casserait l'embed TikTok ou le pixel sans message lisible.
+> Un seul endroit fait autorité. Un test (`tests/deploiement.test.ts`) échoue
+> si un en-tête est ajouté des deux côtés.
+
+> Les lignes `listen ... ssl http2;` correspondent à nginx 1.18 et 1.24
+> (Ubuntu 22.04 et 24.04). Sur nginx ≥ 1.25 seulement, remplacez-les par
+> `listen 443 ssl;` suivi de `http2 on;`.
 
 ### 4. Variables d'environnement de production
 
@@ -212,33 +250,93 @@ NEXT_PUBLIC_TIKTOK_PIXEL_ID="<id du pixel>"
 > `PAYMENT_MOCK_AUTOCONFIRM=1` valide les paiements sans argent : ces deux
 > réglages sont réservés à la démonstration.
 
-### 5. Sauvegardes
+### 5. Sauvegardes et restauration
+
+Les deux scripts sont fournis et testés : `deploy/tara-backup.sh` et
+`deploy/tara-restore.sh`.
 
 ```bash
-# /etc/cron.daily/tara-backup
-set -euo pipefail
-pg_dump -U tara --format=custom tara > /var/backups/tara-$(date +%F).dump
-find /var/backups -name 'tara-*.dump' -mtime +30 -delete
-rsync -a /var/www/tara/public/uploads/ /var/backups/uploads/
+sudo cp deploy/tara-backup.sh /etc/cron.daily/tara-backup
+sudo chmod +x /etc/cron.daily/tara-backup
+sudo -u postgres /etc/cron.daily/tara-backup      # premier essai, à la main
 ```
 
-Le format `custom` (`-Fc`) permet une restauration sélective, table par table,
-et se restaure avec `pg_restore` :
+La sauvegarde écrit dans `/var/backups/tara` un dump PostgreSQL au format
+`custom` (restauration sélective possible) plus une archive des photos
+d'articles — qui ne sont pas en base : **sans elles, la restauration est
+incomplète.** Rotation à 30 jours. Le script échoue bruyamment si le dump fait
+moins d'un kilo-octet, et le renommage final est atomique : un fichier
+`.dump` présent est forcément complet.
+
+Restauration, vers une base **séparée** par prudence :
 
 ```bash
-# restauration complète sur une base vierge
-sudo -u postgres createdb tara_restore -O tara
-pg_restore -U tara -d tara_restore /var/backups/tara-2026-08-27.dump
-
-# vérifier avant de basculer
-psql -U tara -d tara_restore -c "select count(*) from orders;"
+sudo -u postgres /var/www/tara/deploy/tara-restore.sh \
+  /var/backups/tara/tara-2026-08-27_0300.dump tara_restore
 ```
 
-**Testez la restauration au moins une fois avant la mise en production.** Une
-sauvegarde jamais restaurée n'est pas une sauvegarde. C'est un point de la
-checklist de pré-vol (lot 6) que le script ne peut pas vérifier à votre place.
+Le script affiche les compteurs de boutiques, articles, commandes et
+abonnements. **Comparez-les avec la production avant toute bascule.**
 
-### 6. Fichiers uploadés
+> **Testez la restauration au moins une fois avant l'ouverture.** Une
+> sauvegarde jamais restaurée n'est pas une sauvegarde. C'est un point de la
+> checklist de pré-vol que le script ne peut pas vérifier à votre place.
+
+### 5 bis. Surveillance minimale
+
+L'application expose `GET /api/sante` : `{"ok":true}` en 200 si la base
+répond, `{"ok":false}` en 503 sinon. Elle ne divulgue rien d'autre. Un
+processus vivant dont la base est tombée est bien signalé comme malade.
+
+Trois niveaux, du plus simple au plus complet :
+
+1. **systemd** relève déjà le service s'il meurt (`Restart=always`), au plus
+   5 fois en 2 minutes pour éviter une boucle folle.
+2. **Être prévenu.** systemd ne vous réveille pas la nuit. Le plus simple est
+   un service de surveillance externe gratuit (UptimeRobot, healthchecks.io…)
+   qui interroge `https://tara.shop/api/sante` toutes les 5 minutes et envoie
+   un e-mail ou un SMS en cas d'échec. Un service externe est indispensable :
+   si le VPS tombe entièrement, une alerte hébergée sur ce même VPS ne partira
+   jamais.
+3. **Vérification locale**, en complément, dans `/etc/cron.d/tara-sante` :
+
+   ```cron
+   */5 * * * * tara curl -fsS --max-time 10 http://127.0.0.1:3000/api/sante > /dev/null || systemctl restart tara
+   ```
+
+Journaux : `journalctl -u tara -f` (application), `/var/log/nginx/error.log`
+(proxy).
+
+### 6. Déploiements suivants
+
+Une fois l'installation faite, chaque mise à jour passe par un seul script :
+
+```bash
+sudo -u tara /var/www/tara/scripts/deploy.sh
+```
+
+Il récupère le code, installe, compile, applique les migrations, redémarre le
+service, puis interroge `/api/sante` pendant 30 secondes.
+
+**Il s'arrête à la première erreur (`set -euo pipefail`) et n'atteint jamais
+le redémarrage si une migration a échoué** : l'ancienne version continue de
+tourner. Un site à l'ancienne version vaut mieux qu'un site cassé. Sur
+PostgreSQL, chaque migration étant transactionnelle, une migration échouée ne
+laisse pas non plus de schéma à moitié appliqué.
+
+Pour revenir en arrière :
+
+```bash
+cd /var/www/tara
+sudo -u tara git reset --hard <commit précédent>
+sudo -u tara npm ci && sudo -u tara npm run build
+sudo systemctl restart tara
+```
+
+> Un retour arrière ne défait **pas** les migrations déjà appliquées. Si la
+> version fautive en contenait une, restaurez d'abord la base (§5).
+
+### 7. Fichiers uploadés
 
 En V1 les photos sont écrites dans `public/uploads/`. Pour passer à un stockage
 objet (S3/R2), remplacer l'écriture disque dans `src/lib/products.ts` — c'est le
