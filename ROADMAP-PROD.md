@@ -5,9 +5,9 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-28, fin du lot 7 — **programme terminé** — + `create-seller.mjs` (hors programme).
+**Dernière mise à jour** : 2026-08-28 — programme terminé + `create-seller.mjs` + **bascule des notifications sur WhatsApp Cloud** (décision MIKE).
 **État du code** : V1+V2 complets, fournisseurs simulés, base SQLite.
-147 tests SQLite + 8 tests PostgreSQL, build sans erreur.
+158 tests SQLite + 8 tests PostgreSQL, build sans erreur.
 
 ---
 
@@ -56,7 +56,9 @@ décidé et ce qui reste à trancher.
 - [ ] Passerelle SMS — bloqué : contrat agrégateur + Sender ID + doc API.
 - [ ] Agrégateur Mobile Money — bloqué : registre de commerce + contrat + doc API.
 - [ ] TikTok Login Kit réel — bloqué : app validée + URL de confidentialité stable.
-- [ ] WhatsApp Cloud API — bloqué : société vérifiée par Meta + templates.
+- [x] WhatsApp Cloud API — **déclenché par MIKE le 28/08/2026** : canal de
+      production des notifications ET de l'OTP. Le code est prêt ; les
+      démarches Meta restent à faire (voir décisions).
 
 ---
 
@@ -100,6 +102,10 @@ décidé et ce qui reste à trancher.
 | 2026-08-28 | Lot 7 : l'écran Pilote affiche les **user agents réellement observés**. | La détection est une heuristique : ce tableau permet de la confronter à de vraies visites et de corriger la liste de marqueurs. |
 | 2026-08-28 | Hors programme, sur demande de MIKE : `scripts/create-seller.mjs` crée une vendeuse et sa boutique **sans OTP**. | Tant que la passerelle SMS n'est pas sous contrat, l'inscription normale est impossible : ce script débloque le recrutement des dix pilotes. La vendeuse se connecte ensuite par le parcours normal — dès que la passerelle existe, l'OTP arrive sur le numéro enregistré. |
 | 2026-08-28 | `create-seller.mjs` : les aides (slug, téléphone, slugs réservés) sont **dupliquées** depuis la source TypeScript, avec des **tests de parité** qui échouent si les copies divergent. | Un script .mjs ne peut pas importer du TypeScript sans étape de build. La parité testée rend la duplication tolérable. |
+| 2026-08-28 | **WhatsApp Cloud devient le canal de production** des notifications et de l'OTP (`NOTIFY_PROVIDER=whatsapp_cloud`, `OTP_PROVIDER=whatsapp`) ; le SMS passe en repli. | Décision explicite de MIKE — le lot conditionné est levé. L'utilisatrice type vit dans WhatsApp, et le template y coûte moins cher que le SMS. |
+| 2026-08-28 | Le template `otp` suit le gabarit d'**authentification** de Meta : code seul en paramètre + bouton « copier le code » obligatoire. | L'ancien fournisseur envoyait la phrase entière dans un corps simple : l'API Graph l'aurait rejetée (paramètre > 15 caractères, bouton manquant) — **aucun OTP ne serait parti**, donc aucune inscription. |
+| 2026-08-28 | Le fournisseur WhatsApp compose désormais texte **et lien** dans le paramètre. | Défaut préexistant : le lien était ignoré — alertes de drop et demandes d'avis partaient sans URL. |
+| 2026-08-28 | `OTP_PROVIDER` accepte `whatsapp` et `sms`, deux noms de la même délégation au canal de `NOTIFY_PROVIDER` ; le pré-vol refuse un OTP réel dont le canal est simulé (`otp_sans_canal`). | L'ancien nom mentait : `OTP_PROVIDER=sms` envoyait via le canal de NOTIFY_PROVIDER, quel qu'il soit. |
 | 2026-08-27 | Le tag `v1.0-mock` reste **local**. | L'environnement d'exécution refuse le push des refs de tags (branches acceptées). Action reportée à MIKE. |
 
 ---
@@ -191,7 +197,26 @@ depuis la V1. À trancher : soit on assume que l'espace vendeuse est
 francophone, soit un lot dédié le traduit. Les textes **acheteuse**, eux, sont
 intégralement bilingues.
 
-### 9. Relecture juridique — OUVERTE (lot 3)
+### 9. Templates WhatsApp — démarches Meta à faire (bascule du 28/08)
+
+Le code est prêt et testé (forme des appels vérifiée contre l'API Graph
+simulée), mais **rien ne part sans les démarches Meta**, dans cet ordre :
+
+1. vérifier la société dans le Business Manager Meta (registre de commerce) ;
+2. créer l'app WhatsApp Business + numéro dédié (PAS le numéro WhatsApp
+   personnel de MIKE : l'API Cloud confisque le numéro à l'app) ;
+3. ajouter un moyen de paiement international ;
+4. faire approuver les **cinq templates** aux noms exacts `otp`,
+   `new_video_tag`, `review_request`, `shop_announcement`, `drop_open`,
+   chacun dans sa catégorie (tableau au README) — le template `otp` en
+   catégorie *authentication*, avec bouton « copier le code » ;
+5. renseigner `WHATSAPP_PHONE_NUMBER_ID` et `WHATSAPP_ACCESS_TOKEN`
+   (jeton permanent, pas le jeton d'essai de 24 h).
+
+La version d'API est épinglée par `WHATSAPP_API_VERSION` (v21.0). Meta retire
+les vieilles versions ~2 ans après publication : à monter lors des maintenances.
+
+### 10. Relecture juridique — OUVERTE (lot 3)
 
 Les pages légales rédigées au lot 3 **devront être relues par un humain**
 avant l'ouverture au public. Elles seront écrites de bonne foi, mais pas par

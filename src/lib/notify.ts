@@ -1,12 +1,18 @@
-// Notifications sortantes — SMS local par défaut, WhatsApp en option de croissance.
+// Notifications sortantes — WhatsApp Cloud en production (décision MIKE,
+// 2026-08-28), SMS local en alternative, mock en développement.
 //
-// Choix d'architecture (V2) : le SMS via une passerelle camerounaise est le
-// chemin par défaut. Il atteint 100 % des téléphones (y compris non-smartphones),
-// ne demande ni vérification d'entreprise Meta ni carte bancaire internationale,
-// et se facture souvent en FCFA. L'API WhatsApp Cloud devient intéressante plus
-// tard, à volume élevé : moins chère au message et mieux lue — mais elle exige
-// une société vérifiée par Meta, un moyen de paiement international et des
-// templates approuvés. Le changement se fait ici, sans toucher au reste du code.
+// Pourquoi WhatsApp : l'utilisatrice type vit dans TikTok et WhatsApp — un
+// message WhatsApp est lu, un SMS l'est de moins en moins ; et à volume égal
+// le template WhatsApp coûte moins cher que le SMS camerounais. Le prix de ce
+// choix : une société vérifiée par Meta, un numéro dédié, un moyen de paiement
+// international et CINQ templates approuvés dans la bonne catégorie (voir
+// TEMPLATE_CATEGORY — envoyer du marketing sous « utility » expose à une
+// suspension du compte). La passerelle SMS reste le repli si la vérification
+// Meta traîne : le changement se fait ici, sans toucher au reste du code.
+//
+// Garde-fou (CLAUDE.md) : ce canal n'envoie QUE des templates transactionnels
+// et marketing approuvés. Jamais de conversation automatisée — Meta interdit
+// les assistants IA généralistes sur l'API Cloud depuis janvier 2026.
 
 export type TemplateName =
   | "otp"                // code de connexion à 6 chiffres
@@ -31,6 +37,13 @@ export interface NotifyProvider {
     template: TemplateName;
     body: string;
     link?: string;
+    /**
+     * Le code seul, pour le template « otp ». Les templates d'authentification
+     * WhatsApp n'acceptent qu'un paramètre court (le code, 15 caractères max)
+     * et exigent un bouton « copier le code » : la phrase complète part en SMS,
+     * le code seul part en WhatsApp.
+     */
+    code?: string;
   }): Promise<{ delivered: boolean }>;
 }
 
@@ -93,27 +106,75 @@ class SmsNotifyProvider implements NotifyProvider {
 }
 
 /**
- * WhatsApp Cloud API (option de croissance, à fort volume).
+ * WhatsApp Cloud API — chemin de production.
  * Prérequis : société vérifiée par Meta, numéro dédié, moyen de paiement
- * international, et les quatre templates approuvés dans la BONNE catégorie
- * (voir TEMPLATE_CATEGORY : envoyer du marketing sous « utility » expose à une
- * suspension du compte). Aucun BSP n'est obligatoire : l'onboarding direct
- * chez Meta suffit.
+ * international, et les cinq templates approuvés dans la BONNE catégorie.
+ * Aucun BSP n'est obligatoire : l'onboarding direct chez Meta suffit.
+ *
+ * Côté Meta, chaque template porte le nom de son TemplateName (préfixable via
+ * WHATSAPP_TEMPLATE_PREFIX si le WABA impose un espace de noms), avec UN
+ * paramètre de corps {{1}} :
+ *  - templates utility/marketing : {{1}} reçoit le texte, lien compris ;
+ *  - template « otp » (authentication) : gabarit imposé par Meta — {{1}} reçoit
+ *    le code seul, et le bouton « copier le code » est obligatoire dans l'appel.
  */
-class WhatsAppCloudProvider implements NotifyProvider {
+export class WhatsAppCloudProvider implements NotifyProvider {
   readonly name = "whatsapp_cloud";
 
   private readonly phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID ?? "";
   private readonly token = process.env.WHATSAPP_ACCESS_TOKEN ?? "";
+  private readonly lang = process.env.WHATSAPP_TEMPLATE_LANG ?? "fr";
+  private readonly prefix = process.env.WHATSAPP_TEMPLATE_PREFIX ?? "";
+  private readonly apiVersion = process.env.WHATSAPP_API_VERSION ?? "v21.0";
 
-  async send(opts: { phone: string; template: TemplateName; body: string; link?: string }) {
+  /** Un paramètre de template ne doit contenir ni retour à la ligne ni tabulation. */
+  private compose(body: string, link?: string): string {
+    const text = link ? `${body} ${link}` : body;
+    return text.replace(/\s+/g, " ").trim();
+  }
+
+  async send(opts: {
+    phone: string;
+    template: TemplateName;
+    body: string;
+    link?: string;
+    code?: string;
+  }) {
     if (!this.phoneNumberId || !this.token) {
       console.warn("[notify whatsapp] identifiants absents — message non envoyé");
       return { delivered: false };
     }
+
+    const authentication = TEMPLATE_CATEGORY[opts.template] === "authentication";
+    if (authentication && !opts.code) {
+      // Sans le code isolé, l'appel serait rejeté par Meta (paramètre > 15
+      // caractères) : autant échouer ici, avec un message qui dit quoi faire.
+      console.warn("[notify whatsapp] template d'authentification sans code — message non envoyé");
+      return { delivered: false };
+    }
+
+    // Template d'authentification : corps = le code, + bouton « copier le
+    // code » exigé par Meta. Autres templates : corps = texte et lien.
+    const components = authentication
+      ? [
+          { type: "body", parameters: [{ type: "text", text: opts.code }] },
+          {
+            type: "button",
+            sub_type: "url",
+            index: "0",
+            parameters: [{ type: "text", text: opts.code }],
+          },
+        ]
+      : [
+          {
+            type: "body",
+            parameters: [{ type: "text", text: this.compose(opts.body, opts.link) }],
+          },
+        ];
+
     try {
       const res = await fetch(
-        `https://graph.facebook.com/v21.0/${this.phoneNumberId}/messages`,
+        `https://graph.facebook.com/${this.apiVersion}/${this.phoneNumberId}/messages`,
         {
           method: "POST",
           headers: {
@@ -125,19 +186,18 @@ class WhatsAppCloudProvider implements NotifyProvider {
             to: opts.phone,
             type: "template",
             template: {
-              name: opts.template, // le nom du template approuvé côté Meta
-              language: { code: "fr" },
-              components: [
-                {
-                  type: "body",
-                  parameters: [{ type: "text", text: opts.body }],
-                },
-              ],
+              name: `${this.prefix}${opts.template}`,
+              language: { code: this.lang },
+              components,
             },
           }),
           signal: AbortSignal.timeout(8000),
         }
       );
+      if (!res.ok) {
+        // le corps d'erreur Meta dit pourquoi (template inconnu, catégorie…)
+        console.warn(`[notify whatsapp] refus ${res.status} — message non délivré`);
+      }
       return { delivered: res.ok };
     } catch {
       return { delivered: false };

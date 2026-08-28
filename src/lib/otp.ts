@@ -24,25 +24,34 @@ class MockOtpProvider implements OtpProvider {
 }
 
 /**
- * OTP par SMS — même passerelle locale que les notifications.
- * Le SMS est ici le bon canal : il atteint tous les téléphones et ne dépend
- * d'aucune vérification Meta.
+ * OTP réel : délégué au canal de notifications (WhatsApp Cloud en production,
+ * SMS en alternative — c'est NOTIFY_PROVIDER qui choisit le canal effectif).
+ * La phrase complète sert au SMS ; le code isolé sert au template
+ * d'authentification WhatsApp, qui n'accepte que lui.
  */
-class SmsOtpProvider implements OtpProvider {
-  readonly name = "sms";
+class NotifyOtpProvider implements OtpProvider {
+  readonly name: string;
+  constructor(name: string) {
+    this.name = name;
+  }
   async send(phone: string, code: string): Promise<void> {
     const { getNotifyProvider } = await import("./notify");
     await getNotifyProvider().send({
       phone,
       template: "otp",
       body: `Ton code Tara : ${code} (valable 10 minutes).`,
+      code,
     });
   }
 }
 
 export function getOtpProvider(): OtpProvider {
-  return process.env.OTP_PROVIDER === "sms"
-    ? new SmsOtpProvider()
+  // « sms » et « whatsapp » sont deux noms du même comportement : déléguer au
+  // canal de notifications. Le canal RÉEL est celui de NOTIFY_PROVIDER — le
+  // pré-vol vérifie la cohérence des deux variables.
+  const v = process.env.OTP_PROVIDER;
+  return v === "sms" || v === "whatsapp"
+    ? new NotifyOtpProvider(v)
     : new MockOtpProvider();
 }
 
