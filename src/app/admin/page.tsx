@@ -165,6 +165,14 @@ export default async function AdminHome({
         ))}
       </div>
 
+      <a
+        href="/admin/pilote"
+        className="mt-6 flex items-center justify-between rounded-2xl border-2 border-indigo9/25 bg-white px-4 py-3 text-sm font-extrabold text-indigo9"
+      >
+        📈 Écran Pilote — les 4 chiffres qui décident de la suite
+        <span>→</span>
+      </a>
+
       <h2 className="mb-2 mt-6 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
         Boutiques
       </h2>

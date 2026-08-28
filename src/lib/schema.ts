@@ -101,6 +101,7 @@ export interface VisitsTable {
   product_id: string | null;
   source: string | null;
   user_agent: string | null;
+  channel: string | null; // tiktok | whatsapp | autre (lot 7)
   created_at: Generated<string>;
 }
 

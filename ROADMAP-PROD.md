@@ -5,9 +5,9 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-28, fin du lot 6.
+**Dernière mise à jour** : 2026-08-28, fin du lot 7 — **programme terminé**.
 **État du code** : V1+V2 complets, fournisseurs simulés, base SQLite.
-128 tests SQLite + 8 tests PostgreSQL, build sans erreur.
+140 tests SQLite + 8 tests PostgreSQL, build sans erreur.
 
 ---
 
@@ -46,7 +46,10 @@ décidé et ce qui reste à trancher.
       Fichiers produits, **aucun serveur contacté** : c'est MIKE qui exécute.
 - [x] **Lot 6 — Le pré-vol** — `scripts/preflight.mjs` branché dans
       `deploy.sh` avant le redémarrage, checklist humaine au README.
-- [ ] **Lot 7 — Mesurer le pilote** — écran admin « Pilote », 4 chiffres.
+- [x] **Lot 7 — Mesurer le pilote** — écran `/admin/pilote` : créations par
+      semaine, boutiques encore visitées depuis TikTok, commandes et délai
+      avant la première vente, renouvellements payés. Détection du canal
+      ajoutée (`src/lib/channel.ts`).
 
 ### Lots conditionnés (après le pilote — ne pas démarrer sans décision de MIKE)
 
@@ -91,6 +94,10 @@ décidé et ce qui reste à trancher.
 | 2026-08-28 | Lot 6 : le mock de paiement **redevient bloquant** si au moins une boutique est en mode `agregateur`. | Contrôle piloté par les données plutôt que par une règle aveugle : c'est exactement le cas où des commandes passeraient en « payée » sans versement. |
 | 2026-08-28 | Lot 6 : `create-admin.mjs` rendu bi-dialecte. | **Manque du lot 4** : câblé sur better-sqlite3, il échouait sur PostgreSQL — or la procédure de déploiement du README l'exécute contre la production. Aucun administrateur n'aurait pu être créé. |
 | 2026-08-28 | Lot 6 : `seed.mjs` refuse PostgreSQL et `NODE_ENV=production`. | Ce script fait un `DELETE` sur toutes les tables : lancé par mégarde sur la production, il effacerait boutiques, commandes et abonnements. |
+| 2026-08-28 | Lot 7 : le canal d'une visite est déduit du **user agent**, pas du paramètre `?src=` du lien. | Le kit de partage donne un lien **nu** : toute visite venant d'une bio TikTok était enregistrée « direct ». Le navigateur intégré de TikTok, lui, se signale dans le user agent — seul indice qui ne dépende pas de ce que la vendeuse a bien voulu recopier. |
+| 2026-08-28 | Lot 7 : le lien du kit de partage **reste nu**, sans `?src=bio`. | Un lien plus long se recopie moins bien dans une bio TikTok, et une vendeuse qui le retape ne recopiera jamais le paramètre. La détection par user agent rend l'ajout inutile. |
+| 2026-08-28 | Lot 7 : regroupement par semaine fait en **JavaScript**, pas en SQL. | Les fonctions de date diffèrent entre SQLite et PostgreSQL ; le lot 4 a montré ce que coûte une divergence. À l'échelle d'un pilote de 10 vendeuses, le volume ne justifie pas de dupliquer la logique par dialecte. |
+| 2026-08-28 | Lot 7 : l'écran Pilote affiche les **user agents réellement observés**. | La détection est une heuristique : ce tableau permet de la confronter à de vraies visites et de corriger la liste de marqueurs. |
 | 2026-08-27 | Le tag `v1.0-mock` reste **local**. | L'environnement d'exécution refuse le push des refs de tags (branches acceptées). Action reportée à MIKE. |
 
 ---
@@ -140,7 +147,25 @@ le démarrage effectif du service systemd, `deploy.sh` de bout en bout, et le
 comportement sous charge. Ce sont les premières choses à éprouver quand le VPS
 existera.
 
-### 5. Polices sur le serveur de production
+### 5. La détection du canal TikTok est une heuristique — À VÉRIFIER
+
+`src/lib/channel.ts` reconnaît le navigateur intégré de TikTok à des
+marqueurs du *user agent* (`BytedanceWebview`, `musical_ly`, `Trill`,
+`aweme`, `TikTok`). Ces marqueurs viennent de la documentation et
+d'observations publiques : **je n'ai pas pu les confronter à un vrai
+téléphone depuis cet environnement.**
+
+Si TikTok change son navigateur, ou si ces marqueurs sont incomplets, la
+métrique la plus importante du pilote devient fausse — silencieusement.
+D'où le tableau « Navigateurs observés » sur `/admin/pilote` : à la première
+visite réelle depuis TikTok, vérifier qu'elle est classée « tiktok ».
+C'est un point de la checklist de pré-vol.
+
+Note : les visites enregistrées avant la migration 008 ont `channel = NULL`
+et s'affichent « (avant lot 7) ». Le compteur ne vaut que pour les données
+collectées ensuite.
+
+### 6. Polices sur le serveur de production
 
 L'image d'aperçu est rendue par sharp, qui s'appuie sur les polices du
 système. Le conteneur de développement en a 59 ; **un VPS Ubuntu nu peut n'en
@@ -148,14 +173,14 @@ avoir aucune**, auquel cas les aperçus seraient des aplats de couleur sans
 texte. À installer au lot 5 : `apt install fonts-dejavu-core`. Le code ne
 plante pas dans ce cas, mais l'aperçu perd tout son intérêt.
 
-### 6. Pages légales en français seulement
+### 7. Pages légales en français seulement
 
 Une boutique de démonstration (`kev-sneakers`) est déjà en anglais, et le
 Cameroun est bilingue. Les pages légales, elles, ne sont qu'en français. À
 trancher : traduire après la relecture juridique, ou assumer le français
 comme langue juridique de référence.
 
-### 7. Espace vendeuse non traduit
+### 8. Espace vendeuse non traduit
 
 `src/app/app/` est écrit en français en dur, y compris les libellés ajoutés au
 lot 1. Ce n'est pas conforme à la lettre de `CLAUDE.md` (« toute chaîne visible
@@ -164,7 +189,7 @@ depuis la V1. À trancher : soit on assume que l'espace vendeuse est
 francophone, soit un lot dédié le traduit. Les textes **acheteuse**, eux, sont
 intégralement bilingues.
 
-### 8. Relecture juridique — OUVERTE (lot 3)
+### 9. Relecture juridique — OUVERTE (lot 3)
 
 Les pages légales rédigées au lot 3 **devront être relues par un humain**
 avant l'ouverture au public. Elles seront écrites de bonne foi, mais pas par

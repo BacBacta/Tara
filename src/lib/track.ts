@@ -1,4 +1,5 @@
 import { db, newId } from "./db";
+import { detectChannel } from "./channel";
 
 const BOT_RE = /bot|crawler|spider|curl|wget|lighthouse|headless|preview/i;
 
@@ -42,6 +43,8 @@ export async function recordVisit(opts: {
         product_id: opts.productId ?? null,
         source: opts.source,
         user_agent: ua.slice(0, 250) || null,
+        // Déduit une seule fois, à l'écriture (voir lib/channel.ts).
+        channel: detectChannel(ua, opts.source),
       })
       .execute();
   } catch {
