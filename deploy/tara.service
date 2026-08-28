@@ -1,0 +1,62 @@
+# Service systemd de Tara.
+# Installation :
+#   sudo cp deploy/tara.service /etc/systemd/system/tara.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now tara
+[Unit]
+Description=Tara — la mini-boutique des vendeuses TikTok
+Documentation=https://github.com/BacBacta/Tara
+After=network-online.target postgresql.service
+Wants=network-online.target
+# Sans la base, l'application ne sert à rien : systemd la démarre d'abord.
+Requires=postgresql.service
+# Ces deux clés vivent dans [Unit], pas dans [Service] (systemd >= 229) :
+# elles bornent la boucle de redémarrage si l'application refuse de démarrer.
+StartLimitBurst=5
+StartLimitIntervalSec=120
+
+[Service]
+Type=simple
+User=tara
+Group=tara
+WorkingDirectory=/var/www/tara
+
+# Les secrets vivent HORS du dépôt, lisibles par le seul utilisateur tara :
+#   sudo install -d -m 750 -o root -g tara /etc/tara
+#   sudo install -m 640 -o root -g tara .env.example /etc/tara/tara.env
+EnvironmentFile=/etc/tara/tara.env
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Chemin ABSOLU obligatoire. Vérifiez le vôtre avec « which npm » :
+#   apt/nodesource → /usr/bin/npm     nvm → /home/tara/.nvm/versions/node/vXX/bin/npm
+ExecStart=/usr/bin/npm run start
+
+# Redémarrage automatique, sans boucle folle si le démarrage échoue en série.
+Restart=always
+RestartSec=5
+
+# Arrêt propre : Next.js draine les requêtes en cours sur SIGTERM.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+# --- Durcissement ---
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+RemoveIPC=true
+# ProtectSystem=strict rend tout le disque en lecture seule : on rouvre
+# uniquement le cache de Next et le dossier des photos d'articles.
+ReadWritePaths=/var/www/tara/.next /var/www/tara/public/uploads
+# Node compile son JIT à l'exécution : W^X doit rester autorisé, sinon
+# le processus ne démarre pas.
+MemoryDenyWriteExecute=false
+
+[Install]
+WantedBy=multi-user.target
