@@ -8,7 +8,8 @@ import { fcfa } from "@/lib/format";
 import { parseSource, recordVisit, keepAttribution } from "@/lib/track";
 import { tiktokVideoId } from "@/lib/whatsapp";
 import { canAcceptPayment } from "@/lib/payments";
-import { photosByProduct } from "@/lib/photos";
+import { preload } from "react-dom";
+import { photosByProduct, photoSrcSet } from "@/lib/photos";
 import TikTokEmbed from "@/components/TikTokEmbed";
 import TikTokPixel from "@/components/TikTokPixel";
 
@@ -119,6 +120,11 @@ export default async function ProductPage(props: Props) {
   const data = await getData(params.slug, params.id);
   if (!data || data.shop.suspended === 1) notFound();
   const { shop, product, photo, variants, taggedVideo, reviews, ratingAgg } = data;
+  // Le visuel principal part en tête de téléchargement (React 19 : émet un
+  // <link rel="preload"> côté serveur — aucun JavaScript).
+  if (photo) {
+    preload(photo, { as: "image", fetchPriority: "high" });
+  }
   const lang: Lang = normalizeLang(shop.seller_lang);
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   const attribution = keepAttribution(searchParams);
@@ -183,11 +189,14 @@ export default async function ProductPage(props: Props) {
         // décide de l'achat.
         <img
           src={photo}
+          srcSet={photoSrcSet(photo)}
+          sizes="(max-width: 448px) 100vw, 448px"
           alt={product.name}
           width={800}
           height={1000}
+          fetchPriority="high"
           decoding="async"
-          className="aspect-[4/5] w-full bg-sand object-cover"
+          className="img-frame aspect-[4/5] w-full object-cover"
         />
       ) : (
         <div
@@ -203,6 +212,17 @@ export default async function ProductPage(props: Props) {
           {shop.name}
         </p>
         <h1 className="mt-1 font-display text-[21px] leading-snug tracking-tight">{product.name}</h1>
+        {Number(ratingAgg?.n ?? 0) > 0 && (
+          <a href="#avis" className="mt-1.5 inline-flex items-center gap-1.5 text-[12px] font-bold">
+            <span className="text-[#E8A413]">
+              {"★".repeat(Math.round(Number(ratingAgg?.avg ?? 0)))}
+            </span>
+            <span className="tabular-nums">{Number(ratingAgg?.avg ?? 0).toFixed(1)}</span>
+            <span className="text-inkSoft">
+              · {Number(ratingAgg?.n ?? 0)} {t(lang, "pdp.reviews")}
+            </span>
+          </a>
+        )}
         <div className="mt-2 flex items-baseline justify-between gap-3">
           <p className="font-display text-[26px] tabular-nums tracking-tight">
             {fcfa(product.price_fcfa)}
@@ -274,7 +294,7 @@ export default async function ProductPage(props: Props) {
         </div>
 
         {reviews.length > 0 && (
-          <div className="mt-6 border-t border-ink/[0.07] pt-4">
+          <div id="avis" className="mt-6 scroll-mt-16 border-t border-ink/[0.07] pt-4">
             <p className="text-sm font-extrabold">
               {lang === "en" ? "Verified reviews" : "Avis vérifiés"} ({Number(ratingAgg?.n ?? 0)}){" "}
               <span className="text-[#E8A413]">

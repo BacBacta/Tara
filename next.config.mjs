@@ -36,7 +36,22 @@ const nextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Photos d'articles et de démonstration : cache d'un jour, resservies
+      // périmées une semaine pendant la revalidation. Une photo remplacée
+      // (même URL) apparaît donc sous 24 h — un forfait 4G compté, lui,
+      // économise chaque re-téléchargement.
+      {
+        source: "/:prefix(uploads|demo)/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
+    ];
   },
 };
 

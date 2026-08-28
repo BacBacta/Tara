@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { t, normalizeLang, type Lang } from "@/lib/i18n";
 import { fcfa } from "@/lib/format";
-import { photosByProduct } from "@/lib/photos";
+import { photosByProduct, photoSrcSet, photoVariant } from "@/lib/photos";
 import { parseSource, recordVisit, keepAttribution } from "@/lib/track";
 import TikTokPixel from "@/components/TikTokPixel";
 import { getShopIdentity } from "@/lib/identities";
@@ -87,6 +87,17 @@ async function getShop(slug: string) {
   };
 }
 
+/** La barre de statut du téléphone prend la couleur de la boutique. */
+export async function generateViewport(props: Props) {
+  const params = await props.params;
+  const shop = await db
+    .selectFrom("shops")
+    .select("banner_color")
+    .where("slug", "=", params.slug)
+    .executeTakeFirst();
+  return { themeColor: shop?.banner_color ?? "#33418F" };
+}
+
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params;
   const data = await getShop(params.slug);
@@ -144,7 +155,10 @@ export default async function ShopPage(props: Props) {
       {/* Ruban : la couleur de la vendeuse, réduite à une signature.
           Le reste de l'en-tête est clair — le produit est roi. */}
       <div className="h-1.5" style={{ background: shop.banner_color }} />
-      <header className="px-5 pb-2 pt-6">
+      <header
+        className="px-5 pb-2 pt-6"
+        style={{ background: `linear-gradient(180deg, ${shop.banner_color}14, transparent 85%)` }}
+      >
         <div className="flex items-center gap-4">
           <div
             className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-2xl shadow-card ring-1 ring-ink/[0.06]"
@@ -231,7 +245,7 @@ export default async function ShopPage(props: Props) {
               >
                 {photos.get(v.product_id) && (
                   <img
-                    src={photos.get(v.product_id)}
+                    src={photoVariant(photos.get(v.product_id)!, 320)}
                     alt=""
                     width={224}
                     height={320}
@@ -265,7 +279,7 @@ export default async function ShopPage(props: Props) {
               >
                 {photos.get(p.id) && (
                   <img
-                    src={photos.get(p.id)}
+                    src={photoVariant(photos.get(p.id)!, 320)}
                     alt=""
                     width={224}
                     height={320}
@@ -287,24 +301,58 @@ export default async function ShopPage(props: Props) {
 
       {/* grille articles */}
       <h2 className="label-micro mx-4 mb-2.5 mt-6">{t(lang, "shop.products")}</h2>
+      {products[0] && photos.get(products[0].id) && (
+        <Link
+          href={`/${shop.slug}/p/${products[0].id}${attr}`}
+          className="group mx-4 mb-6 block transition-transform active:scale-[0.99]"
+        >
+          <div className="img-frame relative overflow-hidden rounded-3xl shadow-card">
+            <img
+              src={photos.get(products[0].id)}
+              srcSet={photoSrcSet(photos.get(products[0].id)!)}
+              sizes="(max-width: 448px) 100vw, 448px"
+              alt={products[0].name}
+              width={800}
+              height={1000}
+              fetchPriority="high"
+              decoding="async"
+              className="aspect-[4/5] w-full object-cover"
+            />
+            <span aria-hidden className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-ink/75 to-transparent" />
+            <span className="absolute left-4 top-4 rounded-full bg-cream/90 px-3 py-1 text-[10px] font-extrabold uppercase tracking-micro text-ink backdrop-blur-sm">
+              {t(lang, "shop.featured")}
+            </span>
+            <span className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-3 text-white">
+              <span className="line-clamp-2 max-w-[24ch] text-[15px] font-bold leading-snug [text-shadow:0_1px_8px_rgba(0,0,0,.45)]">
+                {products[0].name}
+              </span>
+              <span className="shrink-0 rounded-full bg-cream px-3 py-1.5 font-display text-[14px] tabular-nums tracking-tight text-ink">
+                {fcfa(products[0].price_fcfa)}
+              </span>
+            </span>
+          </div>
+        </Link>
+      )}
       <div className="grid grid-cols-2 gap-x-3 gap-y-6 px-4">
-        {products.map((p, i) => (
+        {(products[0] && photos.get(products[0].id) ? products.slice(1) : products).map((p, i) => (
           <Link
             key={p.id}
             href={`/${shop.slug}/p/${p.id}${attr}`}
             className="group transition-transform active:scale-[0.98]"
           >
-            <div className="relative overflow-hidden rounded-2xl bg-sand shadow-insetHair">
+            <div className="img-frame relative overflow-hidden rounded-2xl shadow-insetHair">
               {photos.get(p.id) ? (
                 // Photo déjà redimensionnée en WebP à l'envoi : pas
                 // d'optimiseur, aucune coût JavaScript (R2). width/height
                 // réservent la place — la grille ne saute pas en 3G.
                 <img
                   src={photos.get(p.id)}
+                  srcSet={photoSrcSet(photos.get(p.id)!)}
+                  sizes="(max-width: 448px) 50vw, 224px"
                   alt={p.name}
                   width={600}
                   height={800}
-                  loading="lazy"
+                  loading={i < 2 ? "eager" : "lazy"}
                   decoding="async"
                   className="aspect-[3/4] w-full object-cover"
                 />

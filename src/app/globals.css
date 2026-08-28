@@ -89,6 +89,27 @@ body {
 }
 
 @layer utilities {
+  /* Cadre d'image : miroitement pendant le chargement (4G irrégulière),
+     recouvert par l'image une fois arrivée. CSS pur. */
+  .img-frame {
+    background: linear-gradient(110deg, #ece9e2 8%, #f6f4ee 18%, #ece9e2 33%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+  @keyframes shimmer {
+    to {
+      background-position-x: -200%;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .img-frame {
+      animation: none;
+    }
+    * {
+      transition-duration: 0.01ms !important;
+    }
+  }
+
   /* Rail horizontal sans barre de défilement (le geste reste natif) */
   .rail {
     scrollbar-width: none;

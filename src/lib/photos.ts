@@ -30,3 +30,21 @@ export async function photosByProduct(
   }
   return parArticle;
 }
+
+/** Largeurs générées à l'envoi (src/lib/products.ts et scripts/seed.mjs). */
+export const PHOTO_WIDTHS = [320, 560, 800] as const;
+
+/** URL d'une variante : insère « -560 » avant l'extension. 800 = l'original. */
+export function photoVariant(url: string, width: number): string {
+  if (width >= 800) return url;
+  return url.replace(/\.webp$/, `-${width}.webp`);
+}
+
+/**
+ * srcset complet d'une photo. Fonctionne pour les URL relatives (disque) et
+ * absolues (Vercel Blob) : les variantes sont des fichiers sœurs, nommés par
+ * convention, écrits ensemble à l'envoi.
+ */
+export function photoSrcSet(url: string): string {
+  return PHOTO_WIDTHS.map((w) => `${photoVariant(url, w)} ${w}w`).join(", ");
+}

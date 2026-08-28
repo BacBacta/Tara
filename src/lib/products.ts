@@ -60,17 +60,28 @@ export async function createProduct(
 
   try {
     const buf = Buffer.from(await photo.arrayBuffer());
-    const webp = await sharp(buf)
-      .rotate()
-      .resize({ width: 800, withoutEnlargement: true })
-      .webp({ quality: 78 })
-      .toBuffer();
+    const base = sharp(buf).rotate();
 
-    const { url } = await getStorageProvider().save({
-      key: `${productId}.webp`,
-      body: webp,
-      contentType: "image/webp",
-    });
+    // Trois tailles par photo : la grille affiche des vignettes de ~180 px —
+    // leur servir l'image de 800 px entière gaspillait le forfait de
+    // l'acheteuse. Le navigateur choisit via srcset (voir lib/photos.ts).
+    const storage = getStorageProvider();
+    const save = async (width: number, key: string) =>
+      storage.save({
+        key,
+        body: await base
+          .clone()
+          .resize({ width, withoutEnlargement: true })
+          .webp({ quality: 78 })
+          .toBuffer(),
+        contentType: "image/webp",
+      });
+
+    const [{ url }] = await Promise.all([
+      save(800, `${productId}.webp`),
+      save(560, `${productId}-560.webp`),
+      save(320, `${productId}-320.webp`),
+    ]);
 
     await db
       .insertInto("product_media")

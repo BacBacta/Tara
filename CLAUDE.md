@@ -17,7 +17,8 @@ Modèle : abonnement 3 000 F CFA/mois par boutique (10 articles gratuits,
 au-delà il faut l'abonnement). Pas de commission sur les ventes.
 
 **Utilisatrice type** : femme, 20-35 ans, Douala/Yaoundé, téléphone Android
-d'entrée de gamme, réseau 3G instable, forfait data limité, tape sur un petit
+d'entrée de gamme, réseau 4G largement répandu mais irrégulier (mise à jour
+MIKE, 28/08/2026 — 3G en repli), forfait data limité et compté, tape sur un petit
 écran avec le pouce, sait utiliser TikTok et WhatsApp et rien d'autre.
 Chaque décision technique se juge contre elle, pas contre un dev à fibre optique.
 
@@ -45,7 +46,7 @@ onboarding vendeuse : tout doit marcher avec JS désactivé ou non chargé.
 On utilise des **formulaires POST natifs** vers des Route Handlers, pas de
 `fetch()` obligatoire, pas de state client obligatoire.
 
-Raison : le navigateur intégré de TikTok sur Android bas de gamme en 3G perd
+Raison : le navigateur intégré de TikTok sur Android bas de gamme, même en 4G, perd
 ou retarde les bundles. Un bouton qui ne réagit pas = une vente perdue.
 
 Le JS n'est autorisé que pour du **confort strictement optionnel** : bouton
@@ -149,7 +150,7 @@ pour brancher un fournisseur, c'est que l'abstraction est mal placée.
 ## 5. Ce qu'il ne faut pas faire
 
 - ❌ ajouter une dépendance lourde côté client (framework d'état, librairie de
-  composants, animation) — chaque Ko coûte des ventes en 3G
+  composants, animation) — le forfait data reste compté, chaque Ko se justifie
 - ❌ remplacer un formulaire POST par du `fetch()` dans un parcours public
 - ❌ introduire Prisma, un ORM à moteur binaire, ou un service externe payant
   sans que MIKE l'ait demandé
