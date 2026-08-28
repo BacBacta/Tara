@@ -37,20 +37,22 @@ export default async function ConfirmationPage(props: Props) {
       {/* L'achat n'est compté que lorsqu'il est réellement confirmé. */}
       {!announced && <TikTokPixel event="Purchase" value={order.amount_fcfa} />}
       <div
-        className={`flex h-20 w-20 items-center justify-center rounded-full text-4xl ${
-          announced ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-okgreen"
+        className={`flex h-24 w-24 items-center justify-center rounded-full text-[40px] shadow-card ring-8 ${
+          announced
+            ? "bg-amber-50 text-amber-600 ring-amber-50/60"
+            : "bg-emerald-50 text-okgreen ring-emerald-50/60"
         }`}
       >
         {announced ? "⏳" : "✓"}
       </div>
-      <h1 className="text-xl font-extrabold">
+      <h1 className="font-display text-[22px] tracking-tight">
         {announced
           ? t(lang, "pay.announced")
           : fr
             ? "Commande confirmée !"
             : "Order confirmed!"}
       </h1>
-      <p className="max-w-[30ch] text-sm text-gray-500">
+      <p className="max-w-[30ch] text-sm leading-relaxed text-inkSoft">
         {announced ? (
           t(lang, "pay.announcedHelp")
         ) : fr ? (
@@ -69,7 +71,7 @@ export default async function ConfirmationPage(props: Props) {
       </p>
       <Link
         href={`/${order.slug}`}
-        className="mt-2 rounded-2xl bg-wagreen px-6 py-3.5 text-sm font-extrabold text-[#053B1D]"
+        className="btn-wa mt-3 w-auto px-8 text-sm"
       >
         {fr ? "Retour à la boutique" : "Back to the shop"}
       </Link>
