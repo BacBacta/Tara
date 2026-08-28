@@ -8,7 +8,9 @@ import { inputCls, labelCls } from "@/components/Onboarding";
 
 export const dynamic = "force-dynamic";
 
-export default async function Articles(props: { searchParams: Promise<{ err?: string }> }) {
+export default async function Articles(props: {
+  searchParams: Promise<{ err?: string; photo?: string }>;
+}) {
   const searchParams = await props.searchParams;
   const { shop } = await requireShop();
   const products = await db
@@ -34,6 +36,13 @@ export default async function Articles(props: { searchParams: Promise<{ err?: st
       {searchParams.err && (
         <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
           Vérifie le nom et le prix de l&apos;article.
+        </p>
+      )}
+      {searchParams.photo === "echec" && (
+        <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+          ⚠️ L&apos;article est bien créé, mais sa photo n&apos;a pas pu être
+          enregistrée. Réessaie avec une autre image — sans photo, un article
+          se vend beaucoup moins.
         </p>
       )}
 

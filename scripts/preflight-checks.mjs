@@ -172,6 +172,16 @@ export function verifierEnv(env) {
     );
   }
 
+  // Stockage des photos : un fournisseur annonce mais non configure ferait
+  // echouer chaque photo — l'article se creerait sans elle.
+  if (env.STORAGE_PROVIDER === "vercel_blob" && vide(env.BLOB_READ_WRITE_TOKEN)) {
+    ajouter(
+      "stockage_incomplet",
+      "STORAGE_PROVIDER vaut vercel_blob mais BLOB_READ_WRITE_TOKEN est vide : " +
+        "aucune photo d'article ne serait enregistrée."
+    );
+  }
+
   return problemes;
 }
 

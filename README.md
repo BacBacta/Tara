@@ -406,9 +406,8 @@ reste à faire à la main, dans cet ordre :
 
 ### 8. Fichiers uploadés
 
-En V1 les photos sont écrites dans `public/uploads/`. Pour passer à un stockage
-objet (S3/R2), remplacer l'écriture disque dans `src/lib/products.ts` — c'est le
-seul point d'écriture.
+Le point d'écriture unique est `src/lib/storage.ts` (voir §7). `products.ts`
+n'écrit plus jamais sur le disque en direct — un test le vérifie.
 
 ## V2 — intégrations TikTok et rétention
 

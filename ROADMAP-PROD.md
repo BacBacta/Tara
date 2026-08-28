@@ -5,7 +5,7 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-28 — programme terminé + `create-seller.mjs` + notifications WhatsApp Cloud + montée Next.js 14 → 16 + **relecture de sécurité de l'ensemble du programme**.
+**Dernière mise à jour** : 2026-08-28 — programme terminé, relecture de sécurité faite, + **interface de stockage des photos** (préalable à un déploiement Vercel).
 **État du code** : V1+V2 complets, Next 16.3.3 + React 19, fournisseurs simulés en dev, SQLite en dev / PostgreSQL prêt pour la prod.
 158 tests SQLite + 8 tests PostgreSQL, build sans erreur.
 
@@ -109,6 +109,8 @@ décidé et ce qui reste à trancher.
 | 2026-08-28 | Montée **Next 16.3.3 + React 19** ; migration asynchrone réelle de `cookies()`/`headers()` (pas le cast `UnsafeUnwrappedCookies` du codemod, supprimé en 16). | Fermait les deux failles hautes de production. `readSession`/`readAdmin`/`requireAdmin` deviennent async, 25 appelants propagés, zéro erreur TypeScript. |
 | 2026-08-28 | `agentRules: false` dans `next.config.mjs`. | Next 16 injecte sinon un bloc « agent rules » dans `CLAUDE.md` à chaque `next dev`. Ce fichier contient les invariants du projet et n'appartient qu'à MIKE : aucun outil n'y écrit. |
 | 2026-08-28 | **Relecture de sécurité** de tout le programme (11 PR, 115 fichiers, depuis `v1.0-mock`) : aucune vulnérabilité haute ni moyenne. Un constat faible accepté sans correction (question ouverte n°10). | Le code touche sessions, webhooks, argent et numéros de téléphone, et n'avait jamais eu de second regard. Vérifiés sains : HMAC de session et `timingSafeEqual` intacts après la migration async, échappement XML de l'image OG, SQL paramétré dans tous les scripts bi-dialecte, garde `readAdmin()` sur l'activation d'abonnement, sonde `/api/sante` muette. |
+| 2026-08-28 | Les photos d'articles passent par une **interface de stockage** (`src/lib/storage.ts`) : `disk` en dev/VPS, `vercel_blob` en serverless. Décision de MIKE : cible Vercel Blob. | `createProduct` écrivait directement dans `public/uploads/`. Sur Vercel le disque est en **lecture seule** : chaque photo aurait échoué, et le `catch` silencieux aurait créé l'article sans photo **sans rien dire à la vendeuse**. Un article de friperie sans photo ne se vend pas. |
+| 2026-08-28 | L'échec d'une photo est désormais **remonté** (`?photo=echec` + avertissement + journal serveur) au lieu d'être avalé. | Le comportement « une photo ratée ne bloque pas l'article » est conservé (vendeuse en 3G), mais l'invisibilité de l'échec était le vrai danger. |
 | 2026-08-27 | Le tag `v1.0-mock` reste **local**. | L'environnement d'exécution refuse le push des refs de tags (branches acceptées). Action reportée à MIKE. |
 
 ---
@@ -253,7 +255,24 @@ utilisatrice en 3G.
 annoncé » devient une raison suffisante pour qu'une vendeuse expédie sans
 vérifier son MoMo. Dans ce cas, lier l'annonce à un jeton par commande.
 
-### 11. Relecture juridique — OUVERTE (lot 3)
+### 11. Les photos d'articles ne sont AFFICHÉES nulle part — OUVERTE
+
+Découvert en préparant le stockage. `product_media` est **écrit mais jamais
+lu** : aucun `<img>` dans la vitrine ni sur la fiche article. La vitrine
+affiche un dégradé avec un emoji 🛍️ à la place de la photo, et la fiche
+article s'appuie sur l'embed TikTok.
+
+Autrement dit : la vendeuse envoie une photo, elle est convertie, stockée,
+enregistrée en base — et **personne ne la voit jamais**. Le seed insère
+lui-même des `product_media` pointant vers `/demo/p*.webp`.
+
+L'interface de stockage était le préalable indispensable (sans elle, rien ne
+serait stocké du tout en serverless), mais elle ne suffit pas : il reste à
+brancher l'affichage. Travail estimé petit — remplacer le dégradé par la
+photo quand elle existe, en gardant le dégradé en repli — mais il touche la
+vitrine, donc le budget 3G de R2. **À décider par MIKE.**
+
+### 12. Relecture juridique — OUVERTE (lot 3)
 
 Les pages légales rédigées au lot 3 **devront être relues par un humain**
 avant l'ouverture au public. Elles seront écrites de bonne foi, mais pas par
