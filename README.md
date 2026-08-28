@@ -382,6 +382,11 @@ reste à faire à la main, dans cet ordre :
       un vrai téléphone Android d'entrée de gamme, en 3G — pas dans Chrome sur
       un ordinateur. C'est le seul test qui compte : si le bouton ne réagit
       pas là, la vente est perdue.
+- [ ] **Cette visite apparaît bien classée « tiktok »** dans
+      `/admin/pilote`, section « Navigateurs observés ». La détection est une
+      heuristique sur le *user agent* : si elle se trompe, la métrique la plus
+      importante du pilote est fausse. Corrigez la liste de marqueurs dans
+      `src/lib/channel.ts` si besoin.
 - [ ] **Une commande a été passée de bout en bout** sur cette même vitrine,
       jusqu'au message WhatsApp reçu par la vendeuse.
 - [ ] **Les textes vus par l'acheteuse ont été relus contre R1** : nulle part
