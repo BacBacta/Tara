@@ -5,7 +5,7 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-28 — programme terminé, relecture de sécurité faite, + **interface de stockage des photos** (préalable à un déploiement Vercel).
+**Dernière mise à jour** : 2026-08-28 — programme terminé, relecture de sécurité faite, stockage des photos derrière une interface, + **affichage des photos branché**.
 **État du code** : V1+V2 complets, Next 16.3.3 + React 19, fournisseurs simulés en dev, SQLite en dev / PostgreSQL prêt pour la prod.
 158 tests SQLite + 8 tests PostgreSQL, build sans erreur.
 
@@ -255,22 +255,28 @@ utilisatrice en 3G.
 annoncé » devient une raison suffisante pour qu'une vendeuse expédie sans
 vérifier son MoMo. Dans ce cas, lier l'annonce à un jeton par commande.
 
-### 11. Les photos d'articles ne sont AFFICHÉES nulle part — OUVERTE
+### 11. Photos d'articles — FERMÉE le 28/08/2026
 
-Découvert en préparant le stockage. `product_media` est **écrit mais jamais
-lu** : aucun `<img>` dans la vitrine ni sur la fiche article. La vitrine
-affiche un dégradé avec un emoji 🛍️ à la place de la photo, et la fiche
-article s'appuie sur l'embed TikTok.
+`product_media` était écrit mais jamais lu : la vendeuse envoyait une photo
+que personne ne voyait. C'est branché : `src/lib/photos.ts` lit les photos en
+**une seule requête** par vitrine, la grille et la fiche article les
+affichent, le dégradé reste le repli pour les articles sans photo.
 
-Autrement dit : la vendeuse envoie une photo, elle est convertie, stockée,
-enregistrée en base — et **personne ne la voit jamais**. Le seed insère
-lui-même des `product_media` pointant vers `/demo/p*.webp`.
+Balise `<img>` native, jamais `next/image` : la photo est déjà en WebP 800 px
+à l'envoi, donc ni optimiseur ni JavaScript (R2). `width`/`height` déclarés
+pour que la grille ne saute pas en 3G, `loading="lazy"` sur la grille.
 
-L'interface de stockage était le préalable indispensable (sans elle, rien ne
-serait stocké du tout en serverless), mais elle ne suffit pas : il reste à
-brancher l'affichage. Travail estimé petit — remplacer le dégradé par la
-photo quand elle existe, en gardant le dégradé en repli — mais il touche la
-vitrine, donc le budget 3G de R2. **À décider par MIKE.**
+Le seed **génère** désormais les images de démonstration (`public/demo/`,
+non versionné) : sans elles, les boutiques de démo auraient affiché des
+images cassées — pire que le dégradé.
+
+**Un effet de bord mesuré, à ta main** : les vignettes étaient hautes de
+112 px, une bande de 1,6:1 où un vêtement n'est pas reconnaissable. Elles
+sont désormais carrées, et le visuel de la fiche article passe de `h-56` à
+`aspect-[4/3]`. Conséquence chiffrée sur un écran de 360×640 : le bouton
+« Commander sur WhatsApp » passe de 662 px à 708 px du haut — il était déjà
+sous la ligne de flottaison, il l'est de 68 px au lieu de 22. Un coup de
+pouce sur une page de 940 px. Revenir en arrière = deux classes CSS.
 
 ### 12. Relecture juridique — OUVERTE (lot 3)
 

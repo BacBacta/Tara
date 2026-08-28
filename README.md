@@ -404,10 +404,38 @@ reste à faire à la main, dans cet ordre :
 - [ ] **Le mot de passe administrateur est stocké dans un gestionnaire de
       mots de passe**, pas dans un carnet ni dans un fil WhatsApp.
 
-### 8. Fichiers uploadés
+### 8. Photos d'articles — stockage et affichage
 
-Le point d'écriture unique est `src/lib/storage.ts` (voir §7). `products.ts`
-n'écrit plus jamais sur le disque en direct — un test le vérifie.
+Les photos passent par une interface (`src/lib/storage.ts`), au même titre que
+le paiement ou les notifications. Le point d'écriture est unique :
+`products.ts` n'écrit plus jamais sur le disque en direct, un test le vérifie.
+
+| `STORAGE_PROVIDER` | Où atterrissent les photos | Pour qui |
+|---|---|---|
+| **`disk`** (défaut) | `public/uploads/` | développement et **VPS** |
+| `vercel_blob` | Vercel Blob (URL absolue https) | **serverless obligatoire** |
+
+> **Sur une plateforme serverless (Vercel), `disk` ne fonctionne pas** : le
+> système de fichiers est en lecture seule à l'exécution, chaque photo
+> échouerait. Il faut `STORAGE_PROVIDER=vercel_blob` et un store Blob attaché
+> au projet (qui fournit `BLOB_READ_WRITE_TOKEN`). Le pré-vol refuse un
+> `vercel_blob` sans jeton.
+
+Une photo qui échoue **ne bloque jamais** la création de l'article — la
+vendeuse est en 3G — mais l'échec n'est pas silencieux : elle est redirigée
+avec `?photo=echec` et voit un avertissement, et le serveur journalise la
+cause. Ajouter S3 ou R2 = une classe de plus dans `storage.ts`.
+
+**Affichage** : `src/lib/photos.ts` lit les photos en **une seule requête** par
+vitrine. La grille les montre en vignettes carrées, la fiche article en
+`aspect-[4/3]` ; les articles sans photo gardent le dégradé de repli. Balise
+`<img>` native et **jamais `next/image`** : l'image est déjà en WebP 800 px à
+l'envoi, donc ni optimiseur ni JavaScript (R2). `width`/`height` sont déclarés
+pour que la grille ne saute pas pendant le chargement en 3G.
+
+`npm run db:seed` **génère** les photos de démonstration dans `public/demo/`
+(non versionné) : sans elles, les boutiques de démo afficheraient des images
+cassées.
 
 ## V2 — intégrations TikTok et rétention
 
