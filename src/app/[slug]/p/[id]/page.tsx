@@ -165,11 +165,11 @@ export default async function ProductPage(props: Props) {
     <main className="mx-auto max-w-md pb-10">
       <TikTokPixel />
       {/* barre retour */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-gray-200 bg-sand px-4 py-3">
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-ink/[0.06] bg-sand/90 px-4 py-3 backdrop-blur-md">
         <Link
           href={`/${shop.slug}${attribution}`}
           aria-label="Retour"
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-cream shadow-insetHair transition-transform active:scale-90"
         >
           ←
         </Link>
@@ -197,36 +197,35 @@ export default async function ProductPage(props: Props) {
         </div>
       )}
 
-      <section className="-mt-4 rounded-t-3xl border border-gray-200 bg-white px-4 pb-8 pt-5">
-        <h1 className="text-lg font-extrabold leading-snug">{product.name}</h1>
-        <p className="mt-1 text-xl font-extrabold text-indigo9">
+      <section className="relative -mt-5 rounded-t-[28px] border-t border-ink/[0.06] bg-cream px-5 pb-6 pt-5 shadow-[0_-12px_32px_-18px_rgba(37,47,104,.25)]">
+        <div aria-hidden className="absolute left-1/2 top-2 h-1 w-10 -translate-x-1/2 rounded-full bg-ink/10" />
+        <h1 className="font-display text-[19px] leading-snug tracking-tight">{product.name}</h1>
+        <p className="mt-1.5 font-display text-[26px] tabular-nums tracking-tight text-indigo9">
           {fcfa(product.price_fcfa)}
         </p>
         {product.description && (
-          <p className="mt-2 text-sm text-gray-600">{product.description}</p>
+          <p className="mt-2.5 text-sm leading-relaxed text-inkSoft">{product.description}</p>
         )}
         {product.stock_state === "low" && (
-          <p className="mt-2 inline-block rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
-            {t(lang, "shop.lowStock")}
+          <p className="chip mt-2.5 bg-amber-50 font-extrabold text-amber-700">
+            ⚡ {t(lang, "shop.lowStock")}
           </p>
         )}
 
         {/* variantes */}
         {[...groups.entries()].map(([label, values]) => (
           <div key={label} className="mt-4">
-            <p className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-              {label}
-            </p>
-            <div className="mt-1.5 flex flex-wrap gap-2">
+            <p className="label-micro">{label}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
               {values.map((value) => (
                 <Link
                   key={value}
                   href={variantHref(value)}
                   replace
-                  className={`rounded-xl border px-3.5 py-2 text-sm font-bold ${
+                  className={`min-w-[52px] rounded-full border px-4 py-2 text-center text-sm font-bold transition-transform active:scale-95 ${
                     selected === value
-                      ? "border-indigo9 bg-indigo-50 text-indigo9"
-                      : "border-gray-200 bg-white text-ink"
+                      ? "border-indigo9 bg-indigo9 text-white shadow-card"
+                      : "border-ink/10 bg-cream text-ink shadow-insetHair"
                   }`}
                 >
                   {value}
@@ -247,49 +246,8 @@ export default async function ProductPage(props: Props) {
           </div>
         )}
 
-        {/* CTA */}
-        <div className="mt-6 flex flex-col gap-2.5">
-          {!out && (
-            <form method="post" action={`/${shop.slug}/commander`}>
-              <input type="hidden" name="product" value={product.id} />
-              {selected && <input type="hidden" name="variant" value={selected} />}
-              <input type="hidden" name="qty" value="1" />
-              <input type="hidden" name="source" value={source} />
-              <button
-                type="submit"
-                className="w-full rounded-2xl bg-wagreen px-5 py-4 text-center text-sm font-extrabold text-[#053B1D]"
-              >
-                💬 {t(lang, "shop.orderWhatsApp")}
-              </button>
-            </form>
-          )}
-          {!out && canPay && (
-            <form method="post" action={`/${shop.slug}/commander`}>
-              <input type="hidden" name="product" value={product.id} />
-              {selected && <input type="hidden" name="variant" value={selected} />}
-              <input type="hidden" name="qty" value="1" />
-              <input type="hidden" name="source" value={source} />
-              <input type="hidden" name="action" value="pay" />
-              <button
-                type="submit"
-                className="w-full rounded-2xl bg-mango px-5 py-4 text-center text-sm font-extrabold text-[#3A2A00]"
-              >
-                💰 {t(lang, "shop.payMomo")}
-              </button>
-            </form>
-          )}
-          {out && (
-            <span className="rounded-2xl bg-gray-100 px-5 py-4 text-center text-sm font-extrabold text-gray-400">
-              {t(lang, "shop.outOfStock")}
-            </span>
-          )}
-        </div>
-        <p className="mt-3 text-center text-[11px] text-gray-500">
-          🔒 {t(lang, "shop.securePayment")}
-        </p>
-
         {reviews.length > 0 && (
-          <div className="mt-6 border-t border-gray-200 pt-4">
+          <div className="mt-6 border-t border-ink/[0.07] pt-4">
             <p className="text-sm font-extrabold">
               {lang === "en" ? "Verified reviews" : "Avis vérifiés"} ({Number(ratingAgg?.n ?? 0)}){" "}
               <span className="text-[#E8A413]">
@@ -298,7 +256,7 @@ export default async function ProductPage(props: Props) {
             </p>
             <div className="mt-2 flex flex-col gap-2">
               {reviews.map((r) => (
-                <div key={r.id} className="text-xs">
+                <div key={r.id} className="rounded-2xl border border-ink/[0.06] bg-sand/60 p-3 text-xs">
                   <p className="text-[#E8A413]">{"★".repeat(r.rating ?? 0)}</p>
                   {r.comment && <p className="text-gray-600">« {r.comment} »</p>}
                   <p className="text-[10px] font-bold text-okgreen">
@@ -315,6 +273,45 @@ export default async function ProductPage(props: Props) {
           </div>
         )}
       </section>
+
+      {/* Barre d'achat COLLANTE : les boutons ne passent plus jamais sous la
+          ligne de flottaison, quel que soit l'écran. Formulaires POST natifs,
+          position:sticky — zéro JavaScript (R2). */}
+      <div className="sticky bottom-0 z-10 border-t border-ink/[0.06] bg-cream/95 px-4 pb-[max(0.9rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md">
+        <div className="flex flex-col gap-2">
+          {!out && (
+            <form method="post" action={`/${shop.slug}/commander`}>
+              <input type="hidden" name="product" value={product.id} />
+              {selected && <input type="hidden" name="variant" value={selected} />}
+              <input type="hidden" name="qty" value="1" />
+              <input type="hidden" name="source" value={source} />
+              <button type="submit" className="btn-wa py-3.5 text-sm">
+                💬 {t(lang, "shop.orderWhatsApp")}
+              </button>
+            </form>
+          )}
+          {!out && canPay && (
+            <form method="post" action={`/${shop.slug}/commander`}>
+              <input type="hidden" name="product" value={product.id} />
+              {selected && <input type="hidden" name="variant" value={selected} />}
+              <input type="hidden" name="qty" value="1" />
+              <input type="hidden" name="source" value={source} />
+              <input type="hidden" name="action" value="pay" />
+              <button type="submit" className="btn-mango py-3.5 text-sm">
+                💰 {t(lang, "shop.payMomo")}
+              </button>
+            </form>
+          )}
+          {out && (
+            <span className="btn bg-ink/5 py-3.5 text-sm text-ink/40">
+              {t(lang, "shop.outOfStock")}
+            </span>
+          )}
+        </div>
+        <p className="mt-2 text-center text-[10.5px] text-inkSoft">
+          🔒 {t(lang, "shop.securePayment")}
+        </p>
+      </div>
     </main>
   );
 }

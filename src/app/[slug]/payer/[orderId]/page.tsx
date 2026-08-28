@@ -33,12 +33,12 @@ export default async function PayerPage(props: Props) {
   const mode = normalizePaymentMode(order.payment_mode);
 
   const recap = (
-    <div className="mb-4 flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm">
-      <span>
+    <div className="card mb-4 flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-sm">
+      <span className="min-w-0 truncate text-inkSoft">
         {order.product_name}
         {order.variant ? ` (${order.variant})` : ""} × {order.qty}
       </span>
-      <b>{fcfa(order.amount_fcfa)}</b>
+      <b className="shrink-0 font-display tabular-nums tracking-tight">{fcfa(order.amount_fcfa)}</b>
     </div>
   );
 
@@ -75,70 +75,77 @@ export default async function PayerPage(props: Props) {
 
     return (
       <main className="mx-auto max-w-md px-4 pb-10">
-        <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-gray-200 bg-sand px-4 py-3">
+        <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-ink/[0.06] bg-sand/90 px-4 py-3 backdrop-blur-md">
           <b className="text-sm">{t(lang, "pay.directTitle")}</b>
         </div>
 
         {recap}
 
         {announced ? (
-          <div className="mb-4 rounded-2xl bg-emerald-50 px-4 py-3">
+          <div className="mb-4 rounded-2xl border border-okgreen/20 bg-emerald-50 px-4 py-3.5">
             <p className="text-sm font-extrabold text-okgreen">
               ✓ {t(lang, "pay.announced")}
             </p>
-            <p className="mt-1 text-xs text-gray-500">{t(lang, "pay.announcedHelp")}</p>
+            <p className="mt-1 text-xs leading-relaxed text-inkSoft">{t(lang, "pay.announcedHelp")}</p>
           </div>
         ) : (
-          <p className="mb-4 text-sm text-gray-500">{t(lang, "pay.directHowto")}</p>
+          <p className="mb-4 text-sm leading-relaxed text-inkSoft">{t(lang, "pay.directHowto")}</p>
         )}
 
-        {/* Les coordonnées de la VENDEUSE — jamais un compte Tara. */}
-        <dl className="rounded-2xl border-2 border-indigo9/25 bg-white">
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-            <dt className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
+        {/* Les coordonnées de la VENDEUSE — jamais un compte Tara.
+            Présentées comme une carte : c'est le geste central de la page. */}
+        <dl className="grain overflow-hidden rounded-3xl bg-gradient-to-br from-indigo9 via-indigoDeep to-indigoNight text-white shadow-float">
+          <div className="px-5 pb-4 pt-5">
+            <dt className="text-[10.5px] font-extrabold uppercase tracking-micro text-white/50">
               {t(lang, "pay.number")}
             </dt>
-            <dd className="text-base font-extrabold tabular-nums tracking-wide text-indigo9">
+            <dd className="mt-1 select-all font-display text-[27px] tabular-nums leading-none tracking-wide">
               {order.momo_number}
             </dd>
+            <dd className="mt-2.5">
+              <span
+                className={`chip font-extrabold ${
+                  order.momo_operator === "orange"
+                    ? "bg-[#FF7900] text-white"
+                    : "bg-[#FFCC00] text-[#3A2A00]"
+                }`}
+              >
+                {operatorLabel(order.momo_operator)}
+              </span>
+            </dd>
           </div>
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-            <dt className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-              {t(lang, "pay.operator")}
-            </dt>
-            <dd className="text-sm font-extrabold">{operatorLabel(order.momo_operator)}</dd>
-          </div>
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-            <dt className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-              {t(lang, "pay.amount")}
-            </dt>
-            <dd className="text-base font-extrabold tabular-nums">{fcfa(order.amount_fcfa)}</dd>
-          </div>
-          <div className="flex items-center justify-between px-4 py-3">
-            <dt className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-              {t(lang, "pay.orderRef")}
-            </dt>
-            <dd className="text-sm font-extrabold tabular-nums">{order.id}</dd>
+          <div className="flex items-stretch border-t border-white/10 bg-white/[0.04]">
+            <div className="flex-1 px-5 py-3.5">
+              <dt className="text-[10.5px] font-extrabold uppercase tracking-micro text-white/50">
+                {t(lang, "pay.amount")}
+              </dt>
+              <dd className="mt-0.5 font-display text-lg tabular-nums tracking-tight text-mango">
+                {fcfa(order.amount_fcfa)}
+              </dd>
+            </div>
+            <div className="border-l border-white/10 px-5 py-3.5 text-right">
+              <dt className="text-[10.5px] font-extrabold uppercase tracking-micro text-white/50">
+                {t(lang, "pay.orderRef")}
+              </dt>
+              <dd className="mt-0.5 font-display text-lg tabular-nums tracking-tight">{order.id}</dd>
+            </div>
           </div>
         </dl>
 
-        <p className="mt-3 text-center text-[11px] text-gray-500">
+        <p className="mt-3.5 text-center text-[11px] leading-relaxed text-inkSoft">
           {order.shop_name} — {t(lang, "pay.directNotice")}
         </p>
 
         {/* Formulaire POST natif : fonctionne sans JavaScript. */}
         <form method="post" action={`/${order.slug}/payer/${order.id}/annonce`}>
-          <button
-            type="submit"
-            className="mt-5 w-full rounded-2xl bg-wagreen px-5 py-4 text-sm font-extrabold text-[#053B1D]"
-          >
+          <button type="submit" className="btn-wa mt-5 text-sm">
             💬 {t(lang, "pay.announce")}
           </button>
         </form>
 
         <Link
           href={`/${order.slug}`}
-          className="mt-3 block text-center text-xs font-bold text-gray-500"
+          className="mt-4 block text-center text-xs font-bold text-inkSoft underline-offset-2 active:underline"
         >
           {t(lang, "pay.backToShop")}
         </Link>
@@ -154,7 +161,7 @@ export default async function PayerPage(props: Props) {
 
   return (
     <main className="mx-auto max-w-md px-4 pb-10">
-      <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-gray-200 bg-sand px-4 py-3">
+      <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-ink/[0.06] bg-sand/90 px-4 py-3 backdrop-blur-md">
         <b className="text-sm">{fr ? "Paiement Mobile Money" : "Mobile Money payment"}</b>
       </div>
 
@@ -169,23 +176,21 @@ export default async function PayerPage(props: Props) {
       )}
 
       <form method="post" action={`/${order.slug}/payer/${order.id}/init`}>
-        <p className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-          {fr ? "Choisis ton opérateur" : "Choose your operator"}
-        </p>
+        <p className="label-micro">{fr ? "Choisis ton opérateur" : "Choose your operator"}</p>
         <div className="mt-2 flex gap-2.5">
-          <label className="flex-1 cursor-pointer rounded-2xl border-2 border-gray-200 bg-white p-3 text-center text-sm font-extrabold has-[:checked]:border-indigo9 has-[:checked]:bg-indigo-50">
+          <label className="flex-1 cursor-pointer rounded-2xl border border-ink/10 bg-cream p-3.5 text-center text-sm font-extrabold shadow-insetHair transition-transform active:scale-95 has-[:checked]:border-indigo9 has-[:checked]:bg-indigo9/[0.06] has-[:checked]:shadow-card">
             <input type="radio" name="operator" value="mtn" defaultChecked className="sr-only" />
-            <span className="mx-auto mb-1.5 block h-6 w-6 rounded-lg bg-[#FFCC00]" />
+            <span className="mx-auto mb-2 block h-7 w-7 rounded-xl bg-[#FFCC00] shadow-insetHair" />
             MTN MoMo
           </label>
-          <label className="flex-1 cursor-pointer rounded-2xl border-2 border-gray-200 bg-white p-3 text-center text-sm font-extrabold has-[:checked]:border-indigo9 has-[:checked]:bg-indigo-50">
+          <label className="flex-1 cursor-pointer rounded-2xl border border-ink/10 bg-cream p-3.5 text-center text-sm font-extrabold shadow-insetHair transition-transform active:scale-95 has-[:checked]:border-indigo9 has-[:checked]:bg-indigo9/[0.06] has-[:checked]:shadow-card">
             <input type="radio" name="operator" value="orange" className="sr-only" />
-            <span className="mx-auto mb-1.5 block h-6 w-6 rounded-lg bg-[#FF7900]" />
+            <span className="mx-auto mb-2 block h-7 w-7 rounded-xl bg-[#FF7900] shadow-insetHair" />
             Orange Money
           </label>
         </div>
 
-        <label className="mt-4 block text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
+        <label className="label-micro mt-5 block after:hidden">
           {fr ? "Ton numéro" : "Your number"}
           <input
             name="phone"
@@ -193,17 +198,14 @@ export default async function PayerPage(props: Props) {
             autoComplete="tel"
             placeholder="6 77 12 34 56"
             required
-            className="mt-1.5 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-base font-bold tracking-wide focus:border-indigo9 focus:outline-none"
+            className="mt-2 w-full rounded-2xl border border-ink/10 bg-cream px-4 py-3.5 font-display text-lg tabular-nums tracking-wide shadow-insetHair placeholder:font-sans placeholder:text-sm placeholder:font-bold placeholder:text-ink/30 focus:border-indigo9 focus:outline-none"
           />
         </label>
 
-        <button
-          type="submit"
-          className="mt-5 w-full rounded-2xl bg-mango px-5 py-4 text-sm font-extrabold text-[#3A2A00]"
-        >
+        <button type="submit" className="btn-mango mt-6 text-sm">
           {fr ? `Confirmer — ${fcfa(order.amount_fcfa)}` : `Confirm — ${fcfa(order.amount_fcfa)}`}
         </button>
-        <p className="mt-3 text-center text-[11px] text-gray-500">
+        <p className="mt-3 text-center text-[11px] text-inkSoft">
           {fr
             ? "Tu recevras une demande de code PIN sur ton téléphone."
             : "You will receive a PIN request on your phone."}

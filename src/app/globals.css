@@ -12,4 +12,84 @@ html {
 
 body {
   @apply bg-sand text-ink antialiased;
+  font-feature-settings: "cv05", "ss01";
+}
+
+/* Le soin sans le poids : tout ce qui suit est du CSS pur, zéro JavaScript. */
+@layer base {
+  ::selection {
+    background: rgba(245, 166, 35, 0.3);
+  }
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  :focus-visible {
+    outline: 2px solid #33418f;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  summary {
+    list-style: none;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+}
+
+@layer components {
+  /* Étiquette de section : petites capitales espacées + filet */
+  .label-micro {
+    @apply flex items-center gap-3 text-[10.5px] font-extrabold uppercase tracking-micro text-inkSoft;
+  }
+  .label-micro::after {
+    content: "";
+    @apply h-px flex-1 bg-ink/10;
+  }
+
+  /* Carte de base */
+  .card {
+    @apply rounded-3xl border border-ink/[0.07] bg-cream shadow-card;
+  }
+
+  /* Boutons : relief, lumière en tête, enfoncement au toucher (CSS seul) */
+  .btn {
+    @apply relative block w-full rounded-2xl px-5 text-center text-[15px] font-extrabold
+      transition-[transform,box-shadow] duration-150 active:scale-[0.98];
+  }
+  .btn-mango {
+    @apply btn bg-gradient-to-b from-[#FFBE4D] to-mango py-4 text-[#3A2A00] shadow-cta active:shadow-none;
+  }
+  .btn-wa {
+    @apply btn bg-gradient-to-b from-[#3BE07A] to-wagreen py-4 text-[#03301A] shadow-wa active:shadow-none;
+  }
+  .btn-ghost {
+    @apply btn border border-ink/10 bg-cream py-3.5 text-sm text-indigo9 shadow-insetHair;
+  }
+
+  /* Puce d'information */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold;
+  }
+}
+
+@layer utilities {
+  /* Rail horizontal sans barre de défilement (le geste reste natif) */
+  .rail {
+    scrollbar-width: none;
+  }
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+  /* Grain discret — un SVG de 400 octets, posé en pseudo-élément pour ne
+     jamais écraser le dégradé de fond (même propriété background-image). */
+  .grain {
+    position: relative;
+  }
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  }
 }

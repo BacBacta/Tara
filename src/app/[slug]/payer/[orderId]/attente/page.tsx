@@ -58,13 +58,13 @@ export default async function AttentePage(props: Props) {
         <>
           {/* polling sans JS : la page se recharge toutes les 3 s */}
           <meta httpEquiv="refresh" content="3" />
-          <div className="h-14 w-14 animate-pulse rounded-full bg-mango/40 text-center text-3xl leading-[3.5rem]">
+          <div className="flex h-24 w-24 animate-pulse items-center justify-center rounded-full bg-mango/20 text-[40px] shadow-card ring-8 ring-mango/10">
             📲
           </div>
-          <h1 className="text-lg font-extrabold">
+          <h1 className="font-display text-[20px] tracking-tight">
             {fr ? "Regarde ton téléphone" : "Check your phone"}
           </h1>
-          <p className="max-w-[28ch] text-sm text-gray-500">
+          <p className="max-w-[28ch] text-sm leading-relaxed text-inkSoft">
             {fr
               ? `Compose ton code PIN ${payment.operator === "orange" ? "Orange Money" : "MTN MoMo"} pour valider le paiement.`
               : `Enter your ${payment.operator === "orange" ? "Orange Money" : "MTN MoMo"} PIN to confirm the payment.`}
@@ -75,10 +75,10 @@ export default async function AttentePage(props: Props) {
         </>
       ) : (
         <>
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-3xl">
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-red-50 text-[36px] text-red-500 shadow-card ring-8 ring-red-50/60">
             ✕
           </div>
-          <h1 className="text-lg font-extrabold">
+          <h1 className="font-display text-[20px] tracking-tight">
             {fr ? "Paiement non abouti" : "Payment failed"}
           </h1>
           <a
