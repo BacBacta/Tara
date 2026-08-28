@@ -28,6 +28,7 @@ Back-office : `/admin`. Onboarding vendeuse : `/creer`.
 | `npm run db:seed` | jeu de données de démonstration (réinitialise les tables) |
 | `npm test` | tests Vitest (65 tests) |
 | `node scripts/create-admin.mjs <email> <mdp>` | crée/réinitialise un administrateur |
+| `node scripts/create-seller.mjs <tél> "<nom>" <ville> [fr\|en]` | crée une vendeuse et sa boutique **sans OTP** — pour recruter les pilotes à la main tant que la passerelle SMS n'est pas branchée |
 
 ## Architecture
 

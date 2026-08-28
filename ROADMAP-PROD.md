@@ -5,9 +5,9 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-28, fin du lot 7 — **programme terminé**.
+**Dernière mise à jour** : 2026-08-28, fin du lot 7 — **programme terminé** — + `create-seller.mjs` (hors programme).
 **État du code** : V1+V2 complets, fournisseurs simulés, base SQLite.
-140 tests SQLite + 8 tests PostgreSQL, build sans erreur.
+147 tests SQLite + 8 tests PostgreSQL, build sans erreur.
 
 ---
 
@@ -98,6 +98,8 @@ décidé et ce qui reste à trancher.
 | 2026-08-28 | Lot 7 : le lien du kit de partage **reste nu**, sans `?src=bio`. | Un lien plus long se recopie moins bien dans une bio TikTok, et une vendeuse qui le retape ne recopiera jamais le paramètre. La détection par user agent rend l'ajout inutile. |
 | 2026-08-28 | Lot 7 : regroupement par semaine fait en **JavaScript**, pas en SQL. | Les fonctions de date diffèrent entre SQLite et PostgreSQL ; le lot 4 a montré ce que coûte une divergence. À l'échelle d'un pilote de 10 vendeuses, le volume ne justifie pas de dupliquer la logique par dialecte. |
 | 2026-08-28 | Lot 7 : l'écran Pilote affiche les **user agents réellement observés**. | La détection est une heuristique : ce tableau permet de la confronter à de vraies visites et de corriger la liste de marqueurs. |
+| 2026-08-28 | Hors programme, sur demande de MIKE : `scripts/create-seller.mjs` crée une vendeuse et sa boutique **sans OTP**. | Tant que la passerelle SMS n'est pas sous contrat, l'inscription normale est impossible : ce script débloque le recrutement des dix pilotes. La vendeuse se connecte ensuite par le parcours normal — dès que la passerelle existe, l'OTP arrive sur le numéro enregistré. |
+| 2026-08-28 | `create-seller.mjs` : les aides (slug, téléphone, slugs réservés) sont **dupliquées** depuis la source TypeScript, avec des **tests de parité** qui échouent si les copies divergent. | Un script .mjs ne peut pas importer du TypeScript sans étape de build. La parité testée rend la duplication tolérable. |
 | 2026-08-27 | Le tag `v1.0-mock` reste **local**. | L'environnement d'exécution refuse le push des refs de tags (branches acceptées). Action reportée à MIKE. |
 
 ---
