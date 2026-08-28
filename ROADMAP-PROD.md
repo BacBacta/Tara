@@ -5,9 +5,9 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-28 — programme terminé, relecture de sécurité faite, photos stockées et affichées, adaptation 4G, + **refonte de l'onboarding vendeuse**.
+**Dernière mise à jour** : 2026-08-28 — programme terminé, relecture de sécurité faite, photos stockées et affichées, adaptation 4G, onboarding refait, + **espace vendeuse refait**.
 **État du code** : V1+V2 complets, Next 16.3.3 + React 19, fournisseurs simulés en dev, SQLite en dev / PostgreSQL prêt pour la prod.
-200 tests SQLite + 8 tests PostgreSQL, build sans erreur.
+220 tests SQLite + 8 tests PostgreSQL, build sans erreur.
 
 ---
 
@@ -118,6 +118,7 @@ décidé et ce qui reste à trancher.
 | 2026-08-28 | **Adaptation 4G** (décision MIKE, invariant mis à jour dans `CLAUDE.md` : « 4G largement répandue mais irrégulière, forfait compté, 3G en repli »). Images **responsives** : trois tailles générées à l'envoi (800/560/320), `srcset` en grille et fiche, variante 320 seule dans les rails, préchargement du visuel principal (`react-dom preload`, zéro JS), cache `max-age=86400, stale-while-revalidate=604800` sur les photos. | La grille servait l'image de 800 px entière à des vignettes de 180 px — le vrai gâchis d'un forfait compté. 4G ne veut pas dire « dépenser plus » mais « dépenser juste ». |
 | 2026-08-28 | Troisième passe premium : bloc **« À la une »** (premier article en héros éditorial), note des avis sous le titre de la fiche (ancre `#avis`), **shimmer** de chargement en CSS pur avec `prefers-reduced-motion`, barre de statut du téléphone aux couleurs de la boutique (`generateViewport`). | Les gestes des thèmes Shopify haut de gamme, toujours sans un octet de JavaScript ajouté. |
 | 2026-08-28 | **L'onboarding vendeuse (`/creer`) passe au système visuel des parcours acheteuse** : socle `ObShell` partagé (marque « tara. », étape en toutes lettres, titrage Sora), champs et boutons repris du design system, écran final où le lien devient une carte indigo comme le numéro de paiement. Trois textes corrigés parce qu'ils ne disaient pas la vérité du code : le lien de boutique est **définitif** (rien ne permet de le changer), le code OTP vaut **10 minutes** (`OTP_TTL_MIN`), et `/creer` sert aussi de **porte de retour** pour une vendeuse déjà inscrite. | La vitrine était soignée, l'entonnoir qui crée les boutiques ne l'était pas : zéro token du design system dans `/creer`. C'est pourtant le premier contact d'une vendeuse avec Tara. Parcours vérifié de bout en bout **au curl, sans une ligne de JavaScript**. |
+| 2026-08-28 | **L'espace vendeuse (`/app`, douze écrans) passe au même système** : cadre partagé `AppShell` (marque, lien vers sa vitrine, titre), barre du bas avec pastille sur l'onglet actif, bandeau `Alert` unique à quatre tons, palette du design system à la place des gris génériques. Trois corrections de fond : le tableau de bord affichait encore **« Bio·Shop »**, l'ancien nom du produit ; la liste d'articles ne montrait **aucune photo** (la vendeuse gérait son catalogue à l'aveugle) ; et le tableau de bord s'ouvrait sur des raccourcis alors que la première question est « qu'est-ce qui m'attend ? » — un bloc **« À faire »** compte désormais les paiements annoncés à vérifier et les commandes payées à livrer (`todo()` dans `lib/stats.ts`). | La vendeuse paie 3 000 F par mois et vit dans `/app` ; la partie gratuite que voit l'acheteuse était soignée, la partie payante ne l'était pas. Vérifié : les douze écrans répondent 200 avec session, les formulaires POST natifs fonctionnent au curl (rupture puis retour en stock). |
 | 2026-08-27 | Le tag `v1.0-mock` reste **local**. | L'environnement d'exécution refuse le push des refs de tags (branches acceptées). Action reportée à MIKE. |
 
 ---

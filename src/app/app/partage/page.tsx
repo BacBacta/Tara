@@ -1,6 +1,7 @@
 import QRCode from "qrcode";
 import { requireShop } from "@/lib/guard";
-import AppNav from "@/components/AppNav";
+import AppShell from "@/components/AppShell";
+import Alert from "@/components/Alert";
 import CopyButton from "@/components/CopyButton";
 
 export const dynamic = "force-dynamic";
@@ -13,82 +14,83 @@ export default async function Partage() {
   const qr = await QRCode.toDataURL(link, { margin: 1, width: 300 });
 
   const pinned = `Commandez ici 👉 ${display}\nPaiement MoMo ✅ Livraison ${shop.city} 🛵`;
-  const bioText = display;
 
   return (
-    <main className="mx-auto max-w-md px-4 pb-24 pt-6">
-      <h1 className="text-lg font-extrabold">Kit de partage</h1>
-      <p className="mt-1 text-xs text-gray-500">
-        Tout ce qu&apos;il faut pour envoyer tes clients vers ta boutique.
-      </p>
-
-      {/* 1. lien */}
-      <section className="mt-4 rounded-2xl border border-gray-200 bg-white p-4">
-        <p className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
+    <AppShell
+      slug={shop.slug}
+      active="/app"
+      title="Kit de partage"
+      subtitle="Tout ce qu'il faut pour envoyer tes clientes vers ta boutique."
+    >
+      {/* 1. le lien — même carte que sur l'écran de fin d'inscription */}
+      <section className="grain overflow-hidden rounded-3xl bg-gradient-to-br from-indigo9 via-indigoDeep to-indigoNight px-5 py-6 text-center text-white shadow-float">
+        <p className="text-[10.5px] font-extrabold uppercase tracking-micro text-white/50">
           Ton lien
         </p>
-        <p className="mt-1 break-all text-base font-extrabold text-indigo9">{display}</p>
-        <CopyButton text={link} />
-      </section>
-
-      {/* 2. QR */}
-      <section className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 text-center">
-        <p className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-          Ton QR code
+        <p className="mt-2 select-all break-words font-display text-[19px] leading-snug tracking-tight">
+          {display}
         </p>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={qr}
-          alt={`QR code de ${display}`}
-          width={180}
-          height={180}
-          className="mx-auto mt-3 rounded-xl border border-gray-200"
-        />
-        <p className="mt-2 text-[11px] text-gray-500">
+        <div className="mx-auto mt-5 w-fit rounded-2xl bg-white p-2.5 shadow-card">
+          {/* QR rendu côté serveur : visible même sans JavaScript */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={qr}
+            alt={`QR code de ${display}`}
+            width={160}
+            height={160}
+            className="block rounded-lg"
+          />
+        </div>
+        <p className="mt-3 text-[11.5px] text-white/55">
           Montre-le en fin de vidéo, en live, ou sur ton comptoir.
         </p>
-        <a
-          href="/app/partage/qr"
-          download={`tara-${shop.slug}.png`}
-          className="mt-3 inline-block rounded-2xl bg-indigo9 px-5 py-3 text-sm font-extrabold text-white"
-        >
+      </section>
+
+      <div className="mt-4 flex flex-col gap-2.5">
+        <CopyButton text={link} />
+        <a href="/app/partage/qr" download={`tara-${shop.slug}.png`} className="btn-ghost">
           ⬇ Télécharger le QR
         </a>
-      </section>
+      </div>
 
-      {/* 3. commentaire épinglé */}
-      <section className="mt-4 rounded-2xl border border-gray-200 bg-white p-4">
-        <p className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-          Texte à épingler en commentaire
-        </p>
-        <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-sand p-3 text-xs font-semibold">
+      {/* 2. commentaire épinglé */}
+      <h2 className="label-micro mb-2.5 mt-7">Texte à épingler en commentaire</h2>
+      <div className="card p-4">
+        <pre className="whitespace-pre-wrap rounded-2xl bg-sand p-3.5 font-sans text-[12.5px] font-semibold leading-relaxed">
           {pinned}
         </pre>
-        <CopyButton text={pinned} />
-        <p className="mt-2 text-[11px] text-gray-500">
-          Astuce : épingle ce commentaire sous chacune de tes vidéos — souvent plus cliqué
-          que la bio.
+        <div className="mt-3">
+          <CopyButton text={pinned} />
+        </div>
+        <p className="mt-3 text-[12px] leading-relaxed text-inkSoft">
+          Astuce : épingle ce commentaire sous chacune de tes vidéos — souvent plus cliqué que
+          la bio.
         </p>
-      </section>
+      </div>
 
-      {/* 4. guide bio TikTok */}
-      <section className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 text-xs">
-        <p className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-          Mettre le lien dans ta bio TikTok
-        </p>
-        <ol className="mt-2 list-inside list-decimal space-y-1 text-gray-600">
-          <li>Ouvre TikTok → <b>Profil</b> → <b>Modifier le profil</b></li>
-          <li>Champ <b>Site web</b> → colle <b className="break-all">{bioText}</b></li>
-          <li>Enregistre, puis dis-le dans ta prochaine vidéo</li>
+      {/* 3. guide bio TikTok */}
+      <h2 className="label-micro mb-2.5 mt-7">Mettre le lien dans ta bio TikTok</h2>
+      <div className="card p-4">
+        <ol className="flex flex-col gap-2.5 text-[13px] leading-relaxed">
+          {[
+            <>Ouvre TikTok → <b>Profil</b> → <b>Modifier le profil</b></>,
+            <>Champ <b>Site web</b> → colle <b className="break-all">{display}</b></>,
+            <>Enregistre, puis dis-le dans ta prochaine vidéo</>,
+          ].map((etape, i) => (
+            <li key={i} className="flex items-start gap-2.5">
+              <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo9 text-[10.5px] font-extrabold text-white">
+                {i + 1}
+              </span>
+              <span>{etape}</span>
+            </li>
+          ))}
         </ol>
-        <p className="mt-3 rounded-xl bg-amber-50 p-2.5 text-[11px] font-semibold text-amber-800">
+        <Alert tone="attention" className="mt-4">
           Le champ « Site web » apparaît à partir de 1 000 abonnés (ou avec un compte
           Business). En attendant : utilise le commentaire épinglé ci-dessus, ou envoie ton
           lien en message privé à celles et ceux qui commentent.
-        </p>
-      </section>
-
-      <AppNav active="/app" />
-    </main>
+        </Alert>
+      </div>
+    </AppShell>
   );
 }

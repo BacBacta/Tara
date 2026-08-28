@@ -1,4 +1,6 @@
+import type { Kysely } from "kysely";
 import { db } from "./db";
+import type { DB } from "./schema";
 
 function sinceIso(days: number): string {
   return new Date(Date.now() - days * 86400_000).toISOString().slice(0, 19).replace("T", " ");
@@ -122,4 +124,27 @@ export async function videoFunnel(shopId: string): Promise<VideoFunnel[]> {
       };
     })
     .sort((a, b) => b.orders - a.orders || b.visits - a.visits);
+}
+
+/** Ce qui attend la vendeuse, maintenant. Deux gestes seulement :
+ *  vérifier un paiement annoncé (R1 : elle seule constate l'argent reçu),
+ *  et expédier ce qui est payé. */
+export interface Todo {
+  aVerifier: number;
+  aLivrer: number;
+}
+
+export async function todo(
+  shopId: string,
+  dbi: Kysely<DB> = db
+): Promise<Todo> {
+  const rows = await dbi
+    .selectFrom("orders")
+    .select(["status", db.fn.countAll<number>().as("n")])
+    .where("shop_id", "=", shopId)
+    .where("status", "in", ["payment_announced", "paid"])
+    .groupBy("status")
+    .execute();
+  const n = (s: string) => Number(rows.find((r) => r.status === s)?.n ?? 0);
+  return { aVerifier: n("payment_announced"), aLivrer: n("paid") };
 }

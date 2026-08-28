@@ -3,7 +3,9 @@ import { requireShop } from "@/lib/guard";
 import { db } from "@/lib/db";
 import { fcfa } from "@/lib/format";
 import { canAddProduct, FREE_PRODUCT_LIMIT, isPaidActive, countActiveProducts } from "@/lib/plan";
-import AppNav from "@/components/AppNav";
+import { photosByProduct, photoVariant } from "@/lib/photos";
+import AppShell from "@/components/AppShell";
+import Alert from "@/components/Alert";
 import { inputCls, labelCls } from "@/components/Onboarding";
 
 export const dynamic = "force-dynamic";
@@ -20,108 +22,141 @@ export default async function Articles(props: {
     .where("removed", "=", 0)
     .orderBy("position", "asc")
     .execute();
+  // la vendeuse gérait son catalogue à l'aveugle : la vignette est celle
+  // que voit sa cliente, en variante 320 px (forfait compté)
+  const photos = await photosByProduct(products.map((p) => p.id));
   const addable = await canAddProduct(shop);
   const paid = isPaidActive(shop);
   const n = await countActiveProducts(shop.id);
 
   return (
-    <main className="mx-auto max-w-md px-4 pb-24 pt-6">
-      <h1 className="text-lg font-extrabold">
-        Articles{" "}
-        <span className="text-xs font-bold text-gray-400">
-          — {n}{paid ? "" : `/${FREE_PRODUCT_LIMIT}`}
-        </span>
-      </h1>
-
+    <AppShell
+      slug={shop.slug}
+      active="/app/articles"
+      title="Articles"
+      subtitle={`${n}${paid ? "" : ` sur ${FREE_PRODUCT_LIMIT}`} en ligne`}
+    >
       {searchParams.err && (
-        <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
-          Vérifie le nom et le prix de l&apos;article.
-        </p>
+        <Alert className="mb-4">Vérifie le nom et le prix de l&apos;article.</Alert>
       )}
       {searchParams.photo === "echec" && (
-        <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
-          ⚠️ L&apos;article est bien créé, mais sa photo n&apos;a pas pu être
-          enregistrée. Réessaie avec une autre image — sans photo, un article
-          se vend beaucoup moins.
-        </p>
+        <Alert tone="attention" className="mb-4">
+          ⚠️ L&apos;article est bien créé, mais sa photo n&apos;a pas pu être enregistrée.
+          Réessaie avec une autre image — sans photo, un article se vend beaucoup moins.
+        </Alert>
       )}
 
-      <div className="mt-4 flex flex-col gap-2">
-        {products.map((p) => (
-          <div key={p.id} className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-3">
-            <div className="flex-1 text-xs">
-              <b>{p.name}</b>
-              <p className="tabular-nums text-indigo9 font-extrabold">{fcfa(p.price_fcfa)}</p>
+      <div className="flex flex-col gap-2">
+        {products.length === 0 && (
+          <p className="card p-4 text-[12.5px] text-inkSoft">
+            Aucun article pour l&apos;instant.
+          </p>
+        )}
+        {products.map((p) => {
+          const photo = photos.get(p.id);
+          return (
+            <div key={p.id} className="card flex items-start gap-3 rounded-2xl p-2.5">
+              {photo ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={photoVariant(photo, 320)}
+                  alt=""
+                  width={112}
+                  height={112}
+                  className="img-frame h-14 w-14 shrink-0 rounded-xl object-cover"
+                />
+              ) : (
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-sand text-lg">
+                  🛍️
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <b className="block text-[13px] leading-snug">{p.name}</b>
+                <p className="mt-0.5 font-display text-[13.5px] tabular-nums text-indigo9">
+                  {fcfa(p.price_fcfa)}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <form method="post" action="/app/articles/update">
+                    <input type="hidden" name="product" value={p.id} />
+                    <input
+                      type="hidden"
+                      name="op"
+                      value={p.stock_state === "out" ? "restock" : "out"}
+                    />
+                    <button
+                      className={`chip font-extrabold transition-transform active:scale-[0.97] ${
+                        p.stock_state === "out"
+                          ? "bg-emerald-50 text-okgreen"
+                          : "bg-amber-50 text-amber-700"
+                      }`}
+                    >
+                      {p.stock_state === "out" ? "Remettre en stock" : "Rupture"}
+                    </button>
+                  </form>
+                  <form method="post" action="/app/articles/update">
+                    <input type="hidden" name="product" value={p.id} />
+                    <input type="hidden" name="op" value="remove" />
+                    <button className="chip bg-red-50 font-extrabold text-red-500 transition-transform active:scale-[0.97]">
+                      Retirer
+                    </button>
+                  </form>
+                </div>
+              </div>
             </div>
-            <form method="post" action="/app/articles/update">
-              <input type="hidden" name="product" value={p.id} />
-              <input type="hidden" name="op" value={p.stock_state === "out" ? "restock" : "out"} />
-              <button
-                className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${
-                  p.stock_state === "out"
-                    ? "bg-emerald-50 text-okgreen"
-                    : "bg-amber-50 text-amber-700"
-                }`}
-              >
-                {p.stock_state === "out" ? "Remettre en stock" : "Rupture"}
-              </button>
-            </form>
-            <form method="post" action="/app/articles/update">
-              <input type="hidden" name="product" value={p.id} />
-              <input type="hidden" name="op" value="remove" />
-              <button className="rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-extrabold text-red-500">
-                Retirer
-              </button>
-            </form>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* ajout */}
       {addable ? (
-        <details className="mt-5 rounded-2xl border border-gray-200 bg-white p-4">
-          <summary className="cursor-pointer text-sm font-extrabold text-indigo9">
+        <details className="card mt-5 p-4">
+          <summary className="cursor-pointer text-[13.5px] font-extrabold text-indigo9">
             ＋ Ajouter un article
           </summary>
           <form
             method="post"
             action="/app/articles/add"
             encType="multipart/form-data"
-            className="mt-3 flex flex-col gap-3"
+            className="mt-4 flex flex-col gap-4"
           >
             <label className={labelCls}>
-              Photo (optionnel)
-              <input type="file" name="photo" accept="image/*" className="mt-1 block w-full text-xs" />
+              Photo (facultatif)
+              <input
+                type="file"
+                name="photo"
+                accept="image/*"
+                className="mt-2 block w-full text-[12px] text-inkSoft"
+              />
             </label>
             <label className={labelCls}>
               Nom
               <input name="name" required minLength={3} maxLength={80} className={inputCls} />
             </label>
             <label className={labelCls}>
-              Prix (FCFA)
-              <input name="price" inputMode="numeric" required className={inputCls} />
+              Prix en FCFA
+              <input
+                name="price"
+                inputMode="numeric"
+                required
+                className={`${inputCls} tabular-nums`}
+              />
             </label>
             <label className={labelCls}>
-              Lien vidéo TikTok (optionnel)
+              Lien vidéo TikTok (facultatif)
               <input name="video_url" inputMode="url" className={inputCls} />
             </label>
-            <button className="rounded-2xl bg-mango px-5 py-3.5 text-sm font-extrabold text-[#3A2A00]">
-              Ajouter
-            </button>
+            <button className="btn-mango mt-1">Ajouter</button>
           </form>
         </details>
       ) : (
         <Link
           href="/app/upgrade"
-          className="mt-5 block rounded-2xl border-2 border-dashed border-indigo9/40 bg-indigo-50 p-4 text-center text-sm font-extrabold text-indigo9"
+          className="card mt-5 block border-dashed border-indigo9/35 bg-indigo9/[0.05] p-4 text-center text-[13.5px] font-extrabold text-indigo9"
         >
           Limite de {FREE_PRODUCT_LIMIT} articles atteinte 🔒
           <br />
-          <span className="text-xs font-bold">Passe à l&apos;illimité — 3 000 F/mois →</span>
+          <span className="text-[12px]">Passe à l&apos;illimité — 3 000 F/mois →</span>
         </Link>
       )}
-
-      <AppNav active="/app/articles" />
-    </main>
+    </AppShell>
   );
 }

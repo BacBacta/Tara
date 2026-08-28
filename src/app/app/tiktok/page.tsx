@@ -1,7 +1,8 @@
 import { requireShop } from "@/lib/guard";
 import { getIdentity } from "@/lib/identities";
 import { db } from "@/lib/db";
-import AppNav from "@/components/AppNav";
+import AppShell from "@/components/AppShell";
+import Alert from "@/components/Alert";
 
 export const dynamic = "force-dynamic";
 
@@ -16,63 +17,59 @@ export default async function TikTokPage(props: { searchParams: Promise<{ ok?: s
     : null;
 
   return (
-    <main className="mx-auto max-w-md px-4 pb-24 pt-6">
-      <h1 className="text-lg font-extrabold">Mon compte TikTok</h1>
-      <p className="mt-1 text-xs text-gray-500">
-        Connecte ton compte pour obtenir le badge vérifié et afficher tes vidéos sur ta boutique.
-      </p>
-
+    <AppShell
+      slug={shop.slug}
+      active="/app"
+      title="Mon compte TikTok"
+      subtitle="Connecte ton compte pour obtenir le badge vérifié et afficher tes vidéos sur ta boutique."
+    >
       {searchParams.ok && (
-        <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-okgreen">
+        <Alert tone="ok" className="mb-4">
           ✓ Compte connecté — tes vidéos sont synchronisées.
-        </p>
+        </Alert>
       )}
       {searchParams.err && (
-        <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
-          La connexion a échoué. Réessaie.
-        </p>
+        <Alert className="mb-4">La connexion a échoué. Réessaie.</Alert>
       )}
 
       {active ? (
-        <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4">
-          <p className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-extrabold text-indigo9">
+        <div className="card p-4">
+          <span className="chip bg-indigo9/10 font-extrabold text-indigo9">
             ✓ Compte TikTok vérifié
-          </p>
-          <p className="mt-2 text-sm font-extrabold">@{identity?.username}</p>
-          <p className="mt-1 text-xs text-gray-500 tabular-nums">
+          </span>
+          <p className="mt-3 font-display text-[17px] tracking-tight">@{identity?.username}</p>
+          <p className="mt-1 text-[12.5px] tabular-nums text-inkSoft">
             {identity?.follower_count.toLocaleString("fr-FR")} abonnés ·{" "}
             {Number(videos?.n ?? 0)} vidéos synchronisées
           </p>
-          <p className="mt-1 text-[11px] text-gray-400">
+          <p className="mt-1 text-[11.5px] text-inkSoft/80">
             Dernière synchro :{" "}
             {identity?.synced_at ? new Date(identity.synced_at).toLocaleString("fr-FR") : "—"}
           </p>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-4 flex gap-2">
             <form method="post" action="/app/tiktok/sync">
-              <button className="rounded-full border border-indigo9/40 px-3 py-1.5 text-[11px] font-extrabold text-indigo9">
+              <button className="chip border border-indigo9/35 px-3 py-1.5 font-extrabold text-indigo9 transition-transform active:scale-[0.97]">
                 Synchroniser maintenant
               </button>
             </form>
             <form method="post" action="/app/tiktok/disconnect">
-              <button className="rounded-full border border-gray-200 px-3 py-1.5 text-[11px] font-bold text-gray-500">
+              <button className="chip border border-ink/10 px-3 py-1.5 font-bold text-inkSoft transition-transform active:scale-[0.97]">
                 Déconnecter
               </button>
             </form>
           </div>
         </div>
       ) : (
-        <form method="post" action="/app/tiktok/connect" className="mt-4">
-          <button className="w-full rounded-2xl bg-ink px-5 py-4 text-sm font-extrabold text-white">
+        <form method="post" action="/app/tiktok/connect">
+          <button className="btn bg-ink py-4 text-white shadow-card active:shadow-none">
             Connecter mon compte TikTok
           </button>
-          <p className="mt-2 text-[11px] text-gray-500">
+          <p className="mt-3 text-[12px] leading-relaxed text-inkSoft">
             Autorisations demandées : profil public, statistiques, liste de tes vidéos
             publiques. Tara ne publie jamais à ta place.
           </p>
         </form>
       )}
-
-      <AppNav active="/app" />
-    </main>
+    </AppShell>
   );
 }

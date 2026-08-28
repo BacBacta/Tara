@@ -1,11 +1,18 @@
 import { requireShop } from "@/lib/guard";
 import { isPaidActive } from "@/lib/plan";
-import AppNav from "@/components/AppNav";
+import AppShell from "@/components/AppShell";
+import Alert from "@/components/Alert";
 import { inputCls, labelCls } from "@/components/Onboarding";
 
 export const dynamic = "force-dynamic";
 
 const COLORS = ["#33418F", "#0E7C66", "#B45309", "#7C3AED", "#BE123C"];
+
+/** Choix visuel en carte : le point sélectionné se cerne d'indigo, en CSS seul. */
+const CHOIX =
+  "card block cursor-pointer p-3.5 has-[:checked]:border-indigo9 has-[:checked]:bg-indigo9/[0.06]";
+const PASTILLE =
+  "block rounded-2xl border border-ink/10 bg-cream py-2.5 text-center text-[13.5px] font-extrabold peer-checked:border-indigo9 peer-checked:bg-indigo9/[0.06] peer-checked:text-indigo9";
 
 export default async function Reglages(
   props: {
@@ -17,35 +24,43 @@ export default async function Reglages(
   const paid = isPaidActive(shop);
 
   return (
-    <main className="mx-auto max-w-md px-4 pb-24 pt-6">
-      <h1 className="text-lg font-extrabold">Réglages</h1>
+    <AppShell
+      slug={shop.slug}
+      active="/app/reglages"
+      title="Réglages"
+      subtitle={`Plan ${paid ? "illimité" : "gratuit"}${
+        paid && shop.plan_expires_at
+          ? ` — jusqu'au ${new Date(shop.plan_expires_at).toLocaleDateString("fr-FR")}`
+          : ""
+      }`}
+    >
       {searchParams.ok && (
-        <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-okgreen">
+        <Alert tone="ok" className="mb-4">
           ✓ Réglages enregistrés.
-        </p>
+        </Alert>
       )}
       {searchParams.err === "momo" && (
-        <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
-          Numéro Mobile Money invalide — entre un numéro camerounais
-          (ex : 6 77 12 34 56).
-        </p>
+        <Alert className="mb-4">
+          Numéro Mobile Money invalide — entre un numéro camerounais (ex : 6 77 12 34 56).
+        </Alert>
       )}
-      <p className="mt-2 text-xs text-gray-500">
-        Plan : <b>{paid ? "Illimité" : "Gratuit"}</b>
-        {paid && shop.plan_expires_at
-          ? ` — jusqu'au ${new Date(shop.plan_expires_at).toLocaleDateString("fr-FR")}`
-          : ""}
-      </p>
 
-      <form method="post" action="/app/reglages/save" className="mt-4 flex flex-col gap-4">
+      <form method="post" action="/app/reglages/save" className="flex flex-col gap-5">
         <label className={labelCls}>
           Ville
-          <input name="city" defaultValue={shop.city} required minLength={2} maxLength={40} className={inputCls} />
+          <input
+            name="city"
+            defaultValue={shop.city}
+            required
+            minLength={2}
+            maxLength={40}
+            className={inputCls}
+          />
         </label>
 
         <div>
           <p className={labelCls}>Couleur de la bannière</p>
-          <div className="mt-1.5 flex gap-2">
+          <div className="mt-2 flex gap-2.5">
             {COLORS.map((c) => (
               <label key={c} className="cursor-pointer">
                 <input
@@ -56,7 +71,7 @@ export default async function Reglages(
                   className="peer sr-only"
                 />
                 <span
-                  className="block h-9 w-9 rounded-xl border-2 border-transparent peer-checked:border-ink"
+                  className="block h-10 w-10 rounded-2xl ring-2 ring-transparent ring-offset-2 ring-offset-sand peer-checked:ring-ink"
                   style={{ background: c }}
                 />
               </label>
@@ -64,11 +79,11 @@ export default async function Reglages(
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+        <div className="card p-4">
           <p className={labelCls}>Comment tes clientes te paient</p>
 
-          <div className="mt-2 flex flex-col gap-2">
-            <label className="cursor-pointer rounded-xl border-2 border-gray-200 p-3 has-[:checked]:border-indigo9 has-[:checked]:bg-indigo-50">
+          <div className="mt-2.5 flex flex-col gap-2">
+            <label className={CHOIX}>
               <input
                 type="radio"
                 name="payment_mode"
@@ -76,17 +91,17 @@ export default async function Reglages(
                 defaultChecked={shop.payment_mode !== "agregateur"}
                 className="sr-only"
               />
-              <span className="block text-sm font-extrabold">
+              <span className="block text-[13.5px] font-extrabold">
                 Paiement direct — recommandé
               </span>
-              <span className="mt-0.5 block text-[11px] text-gray-500">
-                La cliente envoie l&apos;argent sur ton téléphone, puis te
-                prévient sur WhatsApp. C&apos;est toi qui marques la commande
-                payée. Aucun contrat nécessaire.
+              <span className="mt-1 block text-[12px] leading-relaxed text-inkSoft">
+                La cliente envoie l&apos;argent sur ton téléphone, puis te prévient sur
+                WhatsApp. C&apos;est toi qui marques la commande payée. Aucun contrat
+                nécessaire.
               </span>
             </label>
 
-            <label className="cursor-pointer rounded-xl border-2 border-gray-200 p-3 has-[:checked]:border-indigo9 has-[:checked]:bg-indigo-50">
+            <label className={CHOIX}>
               <input
                 type="radio"
                 name="payment_mode"
@@ -94,17 +109,16 @@ export default async function Reglages(
                 defaultChecked={shop.payment_mode === "agregateur"}
                 className="sr-only"
               />
-              <span className="block text-sm font-extrabold">
+              <span className="block text-[13.5px] font-extrabold">
                 Passerelle Mobile Money
               </span>
-              <span className="mt-0.5 block text-[11px] text-gray-500">
-                Confirmation automatique du paiement. Nécessite un contrat
-                agrégateur.
+              <span className="mt-1 block text-[12px] leading-relaxed text-inkSoft">
+                Confirmation automatique du paiement. Nécessite un contrat agrégateur.
               </span>
             </label>
           </div>
 
-          <label className={`${labelCls} mt-4 block`}>
+          <label className={`${labelCls} mt-5 block`}>
             Ton numéro Mobile Money
             <input
               name="momo_number"
@@ -113,17 +127,17 @@ export default async function Reglages(
               placeholder="6 77 12 34 56"
               defaultValue={shop.momo_number ?? ""}
               maxLength={20}
-              className={inputCls}
+              className={`${inputCls} tabular-nums tracking-wide`}
             />
           </label>
-          <p className="mt-1 text-[11px] text-gray-500">
-            C&apos;est le numéro que tes clientes verront pour t&apos;envoyer
-            l&apos;argent. Tant qu&apos;il est vide, le bouton de paiement
-            n&apos;apparaît pas sur ta boutique.
+          <p className="mt-2 text-[12px] leading-relaxed text-inkSoft">
+            C&apos;est le numéro que tes clientes verront pour t&apos;envoyer l&apos;argent.
+            Tant qu&apos;il est vide, le bouton de paiement n&apos;apparaît pas sur ta
+            boutique.
           </p>
 
-          <p className={`${labelCls} mt-3`}>Ton opérateur</p>
-          <div className="mt-1.5 flex gap-2">
+          <p className={`${labelCls} mt-5`}>Ton opérateur</p>
+          <div className="mt-2 flex gap-2.5">
             {(
               [
                 ["mtn", "MTN MoMo"],
@@ -142,15 +156,13 @@ export default async function Reglages(
                   }
                   className="peer sr-only"
                 />
-                <span className="block rounded-xl border-2 border-gray-200 bg-white py-2.5 text-center text-sm font-extrabold peer-checked:border-indigo9 peer-checked:bg-indigo-50 peer-checked:text-indigo9">
-                  {label}
-                </span>
+                <span className={PASTILLE}>{label}</span>
               </label>
             ))}
           </div>
         </div>
 
-        <label className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold">
+        <label className="card flex items-center justify-between px-4 py-3.5 text-[13.5px] font-bold">
           Passerelle MoMo activée
           <input
             type="checkbox"
@@ -162,30 +174,30 @@ export default async function Reglages(
 
         <div>
           <p className={labelCls}>Langue de la boutique</p>
-          <div className="mt-1.5 flex gap-2">
+          <div className="mt-2 flex gap-2.5">
             {(["fr", "en"] as const).map((l) => (
               <label key={l} className="flex-1 cursor-pointer">
-                <input type="radio" name="lang" value={l} className="peer sr-only" defaultChecked={l === "fr"} />
-                <span className="block rounded-xl border-2 border-gray-200 bg-white py-2.5 text-center text-sm font-extrabold peer-checked:border-indigo9 peer-checked:bg-indigo-50 peer-checked:text-indigo9">
-                  {l === "fr" ? "Français" : "English"}
-                </span>
+                <input
+                  type="radio"
+                  name="lang"
+                  value={l}
+                  className="peer sr-only"
+                  defaultChecked={l === "fr"}
+                />
+                <span className={PASTILLE}>{l === "fr" ? "Français" : "English"}</span>
               </label>
             ))}
           </div>
         </div>
 
-        <button className="rounded-2xl bg-mango px-5 py-3.5 text-sm font-extrabold text-[#3A2A00]">
-          Enregistrer
-        </button>
+        <button className="btn-mango mt-1">Enregistrer</button>
       </form>
 
-      <form method="post" action="/app/reglages/logout" className="mt-6">
-        <button className="w-full rounded-2xl border border-gray-200 bg-white px-5 py-3 text-xs font-bold text-gray-500">
+      <form method="post" action="/app/reglages/logout" className="mt-7">
+        <button className="btn border border-ink/10 bg-cream py-3 text-[12.5px] text-inkSoft shadow-insetHair">
           Se déconnecter
         </button>
       </form>
-
-      <AppNav active="/app/reglages" />
-    </main>
+    </AppShell>
   );
 }
