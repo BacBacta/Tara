@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { audit, readAdmin } from "@/lib/admin";
+import { dateCsv } from "@/lib/format";
 
 function csvCell(v: unknown): string {
   const s = String(v ?? "");
@@ -58,8 +59,8 @@ export async function GET() {
   ];
   const rows = shops.map((s) =>
     [
-      s.slug, s.name, s.city, s.seller_phone, s.plan, s.plan_expires_at ?? "",
-      s.suspended === 1 ? "oui" : "non", s.created_at,
+      s.slug, s.name, s.city, s.seller_phone, s.plan, dateCsv(s.plan_expires_at),
+      s.suspended === 1 ? "oui" : "non", dateCsv(s.created_at),
       prodByShop.get(s.id) ?? 0, visitsByShop.get(s.id) ?? 0,
       allByShop.get(s.id) ?? 0, paidByShop.get(s.id) ?? 0,
     ].map(csvCell).join(";")

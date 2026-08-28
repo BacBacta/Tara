@@ -26,7 +26,7 @@ Back-office : `/admin`. Onboarding vendeuse : `/creer`.
 | `npm run build` / `npm start` | build et exécution en production |
 | `npm run db:migrate` | applique `migrations/*.sql` dans l'ordre |
 | `npm run db:seed` | jeu de données de démonstration (réinitialise les tables) |
-| `npm test` | tests Vitest (65 tests) |
+| `npm test` | tests Vitest (234 tests + 8 PostgreSQL) |
 | `node scripts/create-admin.mjs <email> <mdp>` | crée/réinitialise un administrateur |
 | `node scripts/create-seller.mjs <tél> "<nom>" <ville> [fr\|en]` | crée une vendeuse et sa boutique **sans OTP** — pour recruter les pilotes à la main tant que la passerelle SMS n'est pas branchée |
 
@@ -436,6 +436,28 @@ pour que la grille ne saute pas pendant le chargement en 3G.
 `npm run db:seed` **génère** les photos de démonstration dans `public/demo/`
 (non versionné) : sans elles, les boutiques de démo afficheraient des images
 cassées.
+
+### 9. Abonnement des vendeuses — encaissement manuel
+
+L'abonnement (3 000 F/mois) est **la seule recette de Tara** ; les ventes, elles,
+ne passent jamais par Tara (R1).
+
+Tant qu'aucun agrégateur n'est branché — `PAYMENT_PROVIDER` à `mock` ou vide —
+la vendeuse **ne peut pas payer dans l'application** : le paiement lancé
+n'aboutirait jamais et elle resterait sur un écran d'attente sans fin. Dans ce
+cas, l'écran *Tara illimité* lui donne le portefeuille MoMo de Tara, la
+référence à indiquer (le nom de sa boutique) et un bouton pour prévenir Tara ;
+l'activation se fait ensuite à la main depuis `/admin`, avec la référence du
+versement — c'est elle qui empêche de créditer deux fois le même paiement.
+
+| Variable | Rôle | Sans elle |
+|---|---|---|
+| `TARA_MOMO_NUMBER` | portefeuille MoMo de Tara | **le pré-vol bloque** : aucune vendeuse ne peut s'abonner |
+| `TARA_MOMO_OPERATOR` | `mtn` (défaut) ou `orange` | l'écran annonce MTN |
+| `TARA_WHATSAPP` | numéro pour prévenir Tara | le bouton WhatsApp n'apparaît pas |
+
+Dès qu'un vrai `PAYMENT_PROVIDER` est branché, l'écran repasse tout seul au
+paiement dans l'application : aucune de ces variables n'est alors utilisée.
 
 ## V2 — intégrations TikTok et rétention
 

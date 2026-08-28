@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { Kysely } from "kysely";
 import type { DB } from "./schema";
 import { db as defaultDb } from "./db";
+import { phoneCm } from "./phone";
 
 export const ORDER_STATUSES = [
   "initiated",
@@ -102,4 +103,30 @@ export async function createOrder(
     }
   }
   return null;
+}
+
+/**
+ * Enregistre le numéro de la cliente sur une commande de CETTE boutique.
+ *
+ * En paiement direct — le seul mode du pilote — aucun numéro d'acheteuse ne
+ * passe par Tara : `buyer_phone` n'était rempli que par le parcours
+ * agrégateur. Deux fonctions restaient donc muettes : le bouton « Écrire à
+ * la cliente » et le lien d'avis envoyé à la livraison. La vendeuse, elle,
+ * a le numéro dans WhatsApp dès le premier message.
+ */
+export async function setBuyerPhone(
+  orderId: string,
+  shopId: string,
+  phone: unknown,
+  dbi: Kysely<DB> = defaultDb
+): Promise<boolean> {
+  const parsed = phoneCm.safeParse(phone);
+  if (!parsed.success) return false;
+  const r = await dbi
+    .updateTable("orders")
+    .set({ buyer_phone: parsed.data })
+    .where("id", "=", orderId)
+    .where("shop_id", "=", shopId) // une vendeuse ne touche que SES commandes
+    .executeTakeFirst();
+  return Number(r.numUpdatedRows) === 1;
 }

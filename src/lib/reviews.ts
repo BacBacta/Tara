@@ -50,16 +50,46 @@ export async function openReview(
     })
     .execute();
 
-  if (order.buyer_phone) {
-    const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-    await getNotifyProvider().send({
-      phone: order.buyer_phone,
-      template: "review_request",
-      body: `Ta commande ${order.id} est livrée — donne ton avis en 10 secondes.`,
-      link: `${base}/avis/${token}`,
-    });
-  }
+  await sendReviewLink(order.id, dbi);
   return { created: true, token };
+}
+
+/**
+ * Envoie — ou renvoie — le lien d'avis à la cliente.
+ *
+ * Séparé d'`openReview` parce que le numéro de la cliente peut arriver APRÈS
+ * la livraison : en paiement direct, c'est la vendeuse qui l'attache à la
+ * commande depuis son écran Commandes. Sans cela, le droit d'avis existait
+ * en base mais personne ne recevait jamais le lien.
+ *
+ * Ne fait rien si la commande n'est pas livrée, si l'avis est déjà déposé,
+ * ou si aucun numéro n'est connu.
+ */
+export async function sendReviewLink(
+  orderId: string,
+  dbi: Kysely<DB> = defaultDb
+): Promise<boolean> {
+  const row = await dbi
+    .selectFrom("orders")
+    .innerJoin("reviews", "reviews.order_id", "orders.id")
+    .select([
+      "orders.id", "orders.status", "orders.buyer_phone",
+      "reviews.token", "reviews.status as review_status",
+    ])
+    .where("orders.id", "=", orderId)
+    .executeTakeFirst();
+  if (!row || row.status !== "delivered") return false;
+  if (row.review_status !== "pending") return false;
+  if (!row.buyer_phone) return false;
+
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  await getNotifyProvider().send({
+    phone: row.buyer_phone,
+    template: "review_request",
+    body: `Ta commande ${row.id} est livrée — donne ton avis en 10 secondes.`,
+    link: `${base}/avis/${row.token}`,
+  });
+  return true;
 }
 
 /** Dépôt de l'avis. Refusé si le jeton est inconnu ou déjà utilisé. */

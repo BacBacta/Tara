@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { fcfa } from "@/lib/format";
 import { ORDER_STATUSES, canTransition, type OrderStatus } from "@/lib/orders";
 import AppShell from "@/components/AppShell";
+import Alert from "@/components/Alert";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,10 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
   cancelled: "Annuler",
 };
 
-export default async function Commandes() {
+export default async function Commandes(props: {
+  searchParams: Promise<{ ok?: string; err?: string }>;
+}) {
+  const searchParams = await props.searchParams;
   const { shop } = await requireShop();
   const orders = await db
     .selectFrom("orders")
@@ -40,6 +44,17 @@ export default async function Commandes() {
 
   return (
     <AppShell slug={shop.slug} active="/app/commandes" title="Commandes">
+      {searchParams.ok && (
+        <Alert tone="ok" className="mb-4">
+          ✓ Numéro enregistré — tu peux écrire à ta cliente, et le lien d&apos;avis part
+          à la livraison.
+        </Alert>
+      )}
+      {searchParams.err === "phone" && (
+        <Alert className="mb-4">
+          Numéro invalide — entre un numéro camerounais (ex : 6 90 11 22 33).
+        </Alert>
+      )}
       <div className="flex flex-col gap-2.5">
         {orders.length === 0 && (
           <p className="card p-4 text-[12.5px] text-inkSoft">
@@ -91,6 +106,30 @@ export default async function Commandes() {
                   </form>
                 ))}
               </div>
+
+              {/* Paiement direct : le numéro de la cliente n'arrive jamais
+                  jusqu'à Tara. La vendeuse l'a dans WhatsApp — un collage
+                  suffit, et le bouton d'écriture comme le lien d'avis
+                  s'allument. */}
+              {!o.buyer_phone && (
+                <form
+                  method="post"
+                  action="/app/commandes/cliente"
+                  className="mt-2.5 flex items-center gap-1.5 border-t border-ink/[0.06] pt-2.5"
+                >
+                  <input type="hidden" name="order" value={o.id} />
+                  <input
+                    name="phone"
+                    inputMode="tel"
+                    placeholder="Numéro de ta cliente"
+                    required
+                    className="min-w-0 flex-1 rounded-xl border border-ink/10 bg-cream px-3 py-1.5 text-[12px] font-bold tabular-nums"
+                  />
+                  <button className="chip border border-indigo9/35 font-extrabold text-indigo9 transition-transform active:scale-[0.97]">
+                    Enregistrer
+                  </button>
+                </form>
+              )}
             </div>
           );
         })}

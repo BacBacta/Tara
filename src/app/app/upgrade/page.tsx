@@ -4,6 +4,8 @@ import { fcfa } from "@/lib/format";
 import AppShell from "@/components/AppShell";
 import Alert from "@/components/Alert";
 import { inputCls, labelCls } from "@/components/Onboarding";
+import { collecteAbonnement, messagePreviensTara } from "@/lib/abonnement";
+import { waLink } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,8 @@ export default async function Upgrade(
   const searchParams = await props.searchParams;
   const { shop } = await requireShop();
   const paid = isPaidActive(shop);
+  const collecte = collecteAbonnement();
+  const montant = fcfa(PAID_PLAN_PRICE_FCFA);
 
   return (
     <AppShell slug={shop.slug} active="/app" title="Tara illimité ✨">
@@ -64,6 +68,7 @@ export default async function Upgrade(
         </p>
       </section>
 
+      {collecte.mode === "agregateur" ? (
       <form method="post" action="/app/upgrade/init" className="mt-6">
         <p className={labelCls}>Payer avec</p>
         <div className="mt-2 flex gap-2.5">
@@ -89,9 +94,63 @@ export default async function Upgrade(
           />
         </label>
         <button className="btn-mango mt-6">
-          {paid ? "Prolonger d'un mois" : "Activer l'illimité"} — {fcfa(PAID_PLAN_PRICE_FCFA)}
+          {paid ? "Prolonger d'un mois" : "Activer l'illimité"} — {montant}
         </button>
       </form>
+      ) : collecte.numero ? (
+        /* Pas d'agrégateur : elle envoie l'argent au portefeuille de Tara,
+           qui active l'abonnement à la main. On le dit, plutôt que d'ouvrir
+           un paiement qui n'aboutira jamais. */
+        <section className="mt-6">
+          <h2 className="label-micro mb-2.5">Comment payer</h2>
+          <ol className="card divide-y divide-ink/[0.06] px-4">
+            <li className="flex items-start gap-3 py-3.5">
+              <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo9 text-[10.5px] font-extrabold text-white">
+                1
+              </span>
+              <span className="min-w-0 text-[13.5px] leading-relaxed">
+                Envoie <b>{montant}</b> à ce numéro{" "}
+                {collecte.operateur === "orange" ? "Orange Money" : "MTN MoMo"} :
+                <span className="mt-1 block select-all font-display text-[19px] tabular-nums tracking-wide text-indigo9">
+                  {collecte.numero}
+                </span>
+              </span>
+            </li>
+            <li className="flex items-start gap-3 py-3.5">
+              <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo9 text-[10.5px] font-extrabold text-white">
+                2
+              </span>
+              <span className="text-[13.5px] leading-relaxed">
+                Indique ta boutique en référence :{" "}
+                <b className="select-all">{shop.slug}</b>
+              </span>
+            </li>
+            <li className="flex items-start gap-3 py-3.5">
+              <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo9 text-[10.5px] font-extrabold text-white">
+                3
+              </span>
+              <span className="text-[13.5px] leading-relaxed">
+                Préviens Tara — ton abonnement est activé à la main.
+              </span>
+            </li>
+          </ol>
+          {collecte.whatsapp && (
+            <a
+              href={waLink(collecte.whatsapp, messagePreviensTara(shop.slug, montant))}
+              className="btn-wa mt-4"
+            >
+              💬 Prévenir Tara sur WhatsApp
+            </a>
+          )}
+        </section>
+      ) : (
+        /* Ni agrégateur, ni portefeuille configuré : on ne fait pas semblant.
+           Le pré-vol refuse d'ailleurs cette configuration en production. */
+        <Alert tone="attention" className="mt-6">
+          Le paiement de l&apos;abonnement n&apos;est pas encore ouvert. Ta boutique
+          reste en ligne, et Tara te contactera pour l&apos;activer.
+        </Alert>
+      )}
     </AppShell>
   );
 }
