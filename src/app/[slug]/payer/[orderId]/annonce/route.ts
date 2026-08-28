@@ -4,6 +4,14 @@
 //
 // R1 : cette route n'encaisse rien et ne confirme rien. Elle enregistre une
 // DÉCLARATION de l'acheteuse. Seule la vendeuse marque la commande payée.
+//
+// SÉCURITÉ — non authentifiée, et c'est assumé. Les identifiants B-XXXX sont
+// devinables : on peut donc forger l'annonce d'une commande tierce. Accepté
+// après relecture de sécurité (28/08/2026) : aucune donnée personnelle n'est
+// exposée, l'annonce ne peut jamais atteindre « paid », et elle ne prouve
+// rien même pour l'acheteuse légitime — la vendeuse vérifie son portefeuille
+// MoMo dans tous les cas. Raisonnement complet et conditions de réouverture :
+// ROADMAP-PROD.md, question ouverte n°10.
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { announceDirectPayment, normalizePaymentMode, operatorLabel } from "@/lib/payments";

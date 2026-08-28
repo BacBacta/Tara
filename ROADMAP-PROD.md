@@ -5,7 +5,7 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-28 — programme terminé + `create-seller.mjs` + notifications WhatsApp Cloud + **montée Next.js 14 → 16** (question ouverte n°1 fermée).
+**Dernière mise à jour** : 2026-08-28 — programme terminé + `create-seller.mjs` + notifications WhatsApp Cloud + montée Next.js 14 → 16 + **relecture de sécurité de l'ensemble du programme**.
 **État du code** : V1+V2 complets, Next 16.3.3 + React 19, fournisseurs simulés en dev, SQLite en dev / PostgreSQL prêt pour la prod.
 158 tests SQLite + 8 tests PostgreSQL, build sans erreur.
 
@@ -108,6 +108,7 @@ décidé et ce qui reste à trancher.
 | 2026-08-28 | `OTP_PROVIDER` accepte `whatsapp` et `sms`, deux noms de la même délégation au canal de `NOTIFY_PROVIDER` ; le pré-vol refuse un OTP réel dont le canal est simulé (`otp_sans_canal`). | L'ancien nom mentait : `OTP_PROVIDER=sms` envoyait via le canal de NOTIFY_PROVIDER, quel qu'il soit. |
 | 2026-08-28 | Montée **Next 16.3.3 + React 19** ; migration asynchrone réelle de `cookies()`/`headers()` (pas le cast `UnsafeUnwrappedCookies` du codemod, supprimé en 16). | Fermait les deux failles hautes de production. `readSession`/`readAdmin`/`requireAdmin` deviennent async, 25 appelants propagés, zéro erreur TypeScript. |
 | 2026-08-28 | `agentRules: false` dans `next.config.mjs`. | Next 16 injecte sinon un bloc « agent rules » dans `CLAUDE.md` à chaque `next dev`. Ce fichier contient les invariants du projet et n'appartient qu'à MIKE : aucun outil n'y écrit. |
+| 2026-08-28 | **Relecture de sécurité** de tout le programme (11 PR, 115 fichiers, depuis `v1.0-mock`) : aucune vulnérabilité haute ni moyenne. Un constat faible accepté sans correction (question ouverte n°10). | Le code touche sessions, webhooks, argent et numéros de téléphone, et n'avait jamais eu de second regard. Vérifiés sains : HMAC de session et `timingSafeEqual` intacts après la migration async, échappement XML de l'image OG, SQL paramétré dans tous les scripts bi-dialecte, garde `readAdmin()` sur l'activation d'abonnement, sonde `/api/sante` muette. |
 | 2026-08-27 | Le tag `v1.0-mock` reste **local**. | L'environnement d'exécution refuse le push des refs de tags (branches acceptées). Action reportée à MIKE. |
 
 ---
@@ -215,7 +216,44 @@ simulée), mais **rien ne part sans les démarches Meta**, dans cet ordre :
 La version d'API est épinglée par `WHATSAPP_API_VERSION` (v21.0). Meta retire
 les vieilles versions ~2 ans après publication : à monter lors des maintenances.
 
-### 10. Relecture juridique — OUVERTE (lot 3)
+### 10. Annonce de paiement non authentifiée — ACCEPTÉE, à revoir un jour
+
+Constat de la relecture de sécurité du 28/08/2026. Sévérité **faible**,
+**correction volontairement non faite** — le raisonnement est consigné ici
+pour que personne n'ait à le refaire.
+
+`POST /{slug}/payer/{orderId}/annonce` (lot 1) n'est pas authentifié, et les
+identifiants de commande sont devinables : `genOrderId()` tire un `B-XXXX`
+parmi ~9 000 valeurs. On peut donc énumérer les commandes en attente d'une
+boutique et les faire passer en « paiement annoncé ».
+
+**Pourquoi ce n'est pas bloquant** — vérifié dans le code, pas supposé :
+
+- **aucune donnée personnelle exposée** : en mode direct `orders.buyer_phone`
+  vaut `NULL` (`createOrder`), et la page de confirmation ne le sélectionne
+  même pas. Tout ce qu'elle affiche est déjà public sur la vitrine ;
+- **aucun mouvement d'argent** : seule la vendeuse, depuis sa session, fait
+  passer `payment_announced → paid`. L'annonce ne peut jamais atteindre
+  `paid` ;
+- **effet réversible** : c'est une étiquette d'état, pas une destruction. La
+  vendeuse garde `paid` et `cancelled` ;
+- **c'est la moitié acheteuse d'un flux volontairement anonyme** (R2 :
+  formulaires POST sans JS, aucun compte acheteur). L'annonce ne prouve rien
+  **même pour l'acheteuse légitime** — elle déclare, la vendeuse vérifie son
+  portefeuille MoMo. Forger l'annonce d'une commande tierce ne donne donc
+  aucun levier qu'un attaquant n'a pas déjà sur la sienne.
+
+**Pourquoi ne pas corriger maintenant** : le correctif propre — un jeton
+imprévisible par commande, porté dans le lien de paiement — allongerait le
+lien de l'acheteuse et le message WhatsApp, pour neutraliser une nuisance
+sans gain d'argent ni de données. Mauvais échange contre R2 et contre une
+utilisatrice en 3G.
+
+**À rouvrir si** : un compte acheteur apparaît, ou si le badge « paiement
+annoncé » devient une raison suffisante pour qu'une vendeuse expédie sans
+vérifier son MoMo. Dans ce cas, lier l'annonce à un jeton par commande.
+
+### 11. Relecture juridique — OUVERTE (lot 3)
 
 Les pages légales rédigées au lot 3 **devront être relues par un humain**
 avant l'ouverture au public. Elles seront écrites de bonne foi, mais pas par
