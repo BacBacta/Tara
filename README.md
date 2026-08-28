@@ -459,6 +459,51 @@ versement — c'est elle qui empêche de créditer deux fois le même paiement.
 Dès qu'un vrai `PAYMENT_PROVIDER` est branché, l'écran repasse tout seul au
 paiement dans l'application : aucune de ces variables n'est alors utilisée.
 
+### 10. Déploiement sur Vercel (sans serveur)
+
+Alternative au VPS, utilisée pour la préversion. Ce qui change tient en une
+phrase : **il n'y a pas de shell**. Impossible d'y lancer `db:migrate`,
+`create-admin.mjs` ou le pré-vol à la main, et le système de fichiers est en
+lecture seule.
+
+D'où la commande de build de `vercel.json` :
+
+```json
+"buildCommand": "npm run db:migrate && node scripts/create-admin.mjs && next build"
+```
+
+- `db:migrate` est ré-exécutable : il ne rejoue rien de déjà appliqué, et il
+  fait échouer le build si le schéma ne passe pas — mieux vaut ne pas
+  déployer du code dont la base n'a pas suivi.
+- `create-admin.mjs` **ne fait rien** sans `ADMIN_EMAIL` et `ADMIN_PASSWORD` :
+  il peut rester dans la commande de build sans risque. Avec ces deux
+  variables, il crée le compte, ou en met à jour le mot de passe.
+- Le pré-vol, lui, ne peut pas garder un déploiement Vercel : lancez-le
+  depuis une machine qui atteint la base (`DATABASE_URL=… node
+  scripts/preflight.mjs`) **avant** d'ouvrir au public.
+
+Services à provisionner (une seule fois) :
+
+```bash
+vercel link --yes --project tara
+vercel integration add neon --plan free_v3 -m region=fra1 -m auth=false --name tara-db
+vercel blob create-store tara-photos --access public --yes
+```
+
+Neon injecte `DATABASE_URL`, le store Blob injecte `BLOB_READ_WRITE_TOKEN`.
+Le store doit être **public** : les photos sont servies telles quelles dans
+des balises `<img>`.
+
+Variables à ajouter à la main (`vercel env add <NOM> production`) :
+`SESSION_SECRET`, `PAYMENT_WEBHOOK_SECRET`, `TIKTOK_WEBHOOK_SECRET`,
+`NEXT_PUBLIC_BASE_URL`, `STORAGE_PROVIDER=vercel_blob`, les quatre
+`*_PROVIDER`, et `ADMIN_EMAIL` / `ADMIN_PASSWORD`. **Ne jamais définir**
+`PAYMENT_MOCK_AUTOCONFIRM`.
+
+`"regions": ["fra1"]` place les fonctions à Francfort, dans la même région
+que la base Neon : sans cela elles s'exécutent aux États-Unis et chaque
+requête SQL traverse l'Atlantique.
+
 ## V2 — intégrations TikTok et rétention
 
 Livrée. Tout est derrière des interfaces avec implémentations **mock** : aucune

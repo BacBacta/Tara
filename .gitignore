@@ -5,3 +5,15 @@ dev.db*
 public/uploads/
 public/demo/
 tsconfig.tsbuildinfo
+.vercel
+# Vercel écrit .env.local ; .env.example, lui, reste versionné.
+.env
+.env.local
+.env*.local
+!.env.example
+
+# Déposés par « vercel integration add neon » : des skills d'agent venant de
+# Neon, sans rapport avec le code de Tara. Non versionnés.
+.agents/
+.claude/
+skills-lock.json

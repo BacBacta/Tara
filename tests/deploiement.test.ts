@@ -2,6 +2,7 @@
 // Ces tests ne remplacent pas un vrai serveur : ils empêchent la dérive
 // silencieuse entre la configuration Nginx et celle de l'application.
 import { describe, expect, it } from "vitest";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -101,5 +102,55 @@ describe("unité systemd", () => {
     const unitSection = unit.slice(unit.search(/^\[Unit\]$/m), debutService);
     expect(unitSection).toMatch(/StartLimitIntervalSec=/);
     expect(unitSection).toMatch(/StartLimitBurst=/);
+  });
+});
+
+// Vercel : pas de shell. Ni migration ni compte administrateur ne peuvent
+// être lancés à la main — la commande de build s'en charge, et le script
+// d'administrateur doit pouvoir y rester sans effet quand rien ne le
+// configure.
+describe("déploiement sans serveur (Vercel)", () => {
+  const vercel = JSON.parse(
+    readFileSync(join(process.cwd(), "vercel.json"), "utf8")
+  ) as { buildCommand: string; regions: string[] };
+
+  it("le build applique les migrations avant de compiler", () => {
+    const cmd = vercel.buildCommand;
+    expect(cmd).toContain("db:migrate");
+    expect(cmd.indexOf("db:migrate")).toBeLessThan(cmd.indexOf("next build"));
+    // « && » : une migration qui échoue doit arrêter le build
+    expect(cmd).toContain("&&");
+  });
+
+  it("les fonctions tournent dans la région de la base", () => {
+    // la base Neon est à Francfort ; sans cela les fonctions s'exécutent
+    // aux États-Unis et chaque requête SQL traverse l'Atlantique
+    expect(vercel.regions).toEqual(["fra1"]);
+  });
+
+  it("le compte administrateur se crée au build, sans shell", () => {
+    expect(vercel.buildCommand).toContain("scripts/create-admin.mjs");
+    const src = readFileSync(join(process.cwd(), "scripts/create-admin.mjs"), "utf8");
+    expect(src).toContain("ADMIN_EMAIL");
+    expect(src).toContain("ADMIN_PASSWORD");
+  });
+
+  it("sans arguments ni variables, le script ne fait rien et rend la main", () => {
+    // sinon il ferait échouer chaque build où l'admin n'est pas configuré
+    const env = { ...process.env };
+    delete env.ADMIN_EMAIL;
+    delete env.ADMIN_PASSWORD;
+    const r = spawnSync("node", ["scripts/create-admin.mjs"], { env, encoding: "utf8" });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("Aucun administrateur à créer");
+  });
+
+  it("un mot de passe trop court reste refusé, même par variable", () => {
+    const r = spawnSync("node", ["scripts/create-admin.mjs"], {
+      env: { ...process.env, ADMIN_EMAIL: "admin@tara.shop", ADMIN_PASSWORD: "court" },
+      encoding: "utf8",
+    });
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain("12 caractères minimum");
   });
 });
