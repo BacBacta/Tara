@@ -9,7 +9,7 @@ export async function requireShop(): Promise<{
   sellerId: string;
   shop: Selectable<ShopsTable>;
 }> {
-  const session = readSession();
+  const session = await readSession();
   if (!session) redirect("/creer");
   const shop = await getShopBySeller(session.sellerId);
   if (!shop) redirect("/creer/boutique");

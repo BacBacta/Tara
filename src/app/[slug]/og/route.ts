@@ -7,10 +7,8 @@ import { shareTagline } from "@/lib/public";
 import { fcfa } from "@/lib/format";
 import { normalizeLang } from "@/lib/i18n";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { slug: string } }
-) {
+export async function GET(req: NextRequest, props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const shop = await db
     .selectFrom("shops")
     .innerJoin("sellers", "sellers.id", "shops.seller_id")

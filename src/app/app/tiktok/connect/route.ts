@@ -6,7 +6,7 @@ import { getTikTokProvider } from "@/lib/tiktok";
 
 export async function POST() {
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-  const session = readSession();
+  const session = await readSession();
   if (!session) return NextResponse.redirect(`${base}/creer`, 303);
 
   const state = randomBytes(16).toString("base64url");

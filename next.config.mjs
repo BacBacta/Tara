@@ -29,6 +29,10 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // Next 16 injecte sinon un bloc « agent rules » dans CLAUDE.md à chaque
+  // `next dev`. Ce fichier contient les invariants du projet et n'appartient
+  // qu'à MIKE : aucun outil n'y écrit.
+  agentRules: false,
   poweredByHeader: false,
   reactStrictMode: true,
   async headers() {

@@ -6,7 +6,8 @@ import { inputCls, labelCls } from "@/components/Onboarding";
 
 export const dynamic = "force-dynamic";
 
-export default async function Drops({ searchParams }: { searchParams: { ok?: string } }) {
+export default async function Drops(props: { searchParams: Promise<{ ok?: string }> }) {
+  const searchParams = await props.searchParams;
   const { shop } = await requireShop();
   await openDueDrops(shop.id);
 

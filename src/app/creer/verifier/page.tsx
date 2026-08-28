@@ -3,11 +3,12 @@ import { ObShell, inputCls, labelCls, ctaCls } from "@/components/Onboarding";
 
 export const dynamic = "force-dynamic";
 
-export default function Verifier({
-  searchParams,
-}: {
-  searchParams: { p?: string; d?: string; err?: string };
-}) {
+export default async function Verifier(
+  props: {
+    searchParams: Promise<{ p?: string; d?: string; err?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const phone = searchParams.p;
   if (!phone) redirect("/creer");
   return (

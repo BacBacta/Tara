@@ -7,9 +7,11 @@ import { normalizePaymentMode, operatorLabel } from "@/lib/payments";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: { slug: string; orderId: string }; searchParams: { err?: string } };
+type Props = { params: Promise<{ slug: string; orderId: string }>; searchParams: Promise<{ err?: string }> };
 
-export default async function PayerPage({ params, searchParams }: Props) {
+export default async function PayerPage(props: Props) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const order = await db
     .selectFrom("orders")
     .innerJoin("shops", "shops.id", "orders.shop_id")

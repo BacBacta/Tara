@@ -8,7 +8,8 @@ import { inputCls, labelCls } from "@/components/Onboarding";
 
 export const dynamic = "force-dynamic";
 
-export default async function Articles({ searchParams }: { searchParams: { err?: string } }) {
+export default async function Articles(props: { searchParams: Promise<{ err?: string }> }) {
+  const searchParams = await props.searchParams;
   const { shop } = await requireShop();
   const products = await db
     .selectFrom("products")

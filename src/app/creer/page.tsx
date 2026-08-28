@@ -2,7 +2,8 @@ import { ObShell, inputCls, labelCls, ctaCls } from "@/components/Onboarding";
 
 export const dynamic = "force-dynamic";
 
-export default function Etape1({ searchParams }: { searchParams: { err?: string } }) {
+export default async function Etape1(props: { searchParams: Promise<{ err?: string }> }) {
+  const searchParams = await props.searchParams;
   return (
     <ObShell
       step={1}

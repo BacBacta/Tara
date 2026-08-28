@@ -14,7 +14,8 @@ function label(source: string): string {
   return "direct";
 }
 
-export default async function AppHome({ searchParams }: { searchParams: { ok?: string } }) {
+export default async function AppHome(props: { searchParams: Promise<{ ok?: string }> }) {
+  const searchParams = await props.searchParams;
   const { shop } = await requireShop();
   const [day, week, month] = await Promise.all([kpis(shop.id, 1), kpis(shop.id, 7), kpis(shop.id, 30)]);
   const sources = await statsBySource(shop.id);

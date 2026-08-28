@@ -25,7 +25,7 @@ function joursDepuis(iso: string | null): number | null {
 }
 
 export default async function Pilote() {
-  requireAdmin();
+  await requireAdmin();
 
   const [semaines, vivantes, commandes, renouv, agents] = await Promise.all([
     boutiquesParSemaine(),

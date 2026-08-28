@@ -5,8 +5,8 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-28 — programme terminé + `create-seller.mjs` + **bascule des notifications sur WhatsApp Cloud** (décision MIKE).
-**État du code** : V1+V2 complets, fournisseurs simulés, base SQLite.
+**Dernière mise à jour** : 2026-08-28 — programme terminé + `create-seller.mjs` + notifications WhatsApp Cloud + **montée Next.js 14 → 16** (question ouverte n°1 fermée).
+**État du code** : V1+V2 complets, Next 16.3.3 + React 19, fournisseurs simulés en dev, SQLite en dev / PostgreSQL prêt pour la prod.
 158 tests SQLite + 8 tests PostgreSQL, build sans erreur.
 
 ---
@@ -106,29 +106,28 @@ décidé et ce qui reste à trancher.
 | 2026-08-28 | Le template `otp` suit le gabarit d'**authentification** de Meta : code seul en paramètre + bouton « copier le code » obligatoire. | L'ancien fournisseur envoyait la phrase entière dans un corps simple : l'API Graph l'aurait rejetée (paramètre > 15 caractères, bouton manquant) — **aucun OTP ne serait parti**, donc aucune inscription. |
 | 2026-08-28 | Le fournisseur WhatsApp compose désormais texte **et lien** dans le paramètre. | Défaut préexistant : le lien était ignoré — alertes de drop et demandes d'avis partaient sans URL. |
 | 2026-08-28 | `OTP_PROVIDER` accepte `whatsapp` et `sms`, deux noms de la même délégation au canal de `NOTIFY_PROVIDER` ; le pré-vol refuse un OTP réel dont le canal est simulé (`otp_sans_canal`). | L'ancien nom mentait : `OTP_PROVIDER=sms` envoyait via le canal de NOTIFY_PROVIDER, quel qu'il soit. |
+| 2026-08-28 | Montée **Next 16.3.3 + React 19** ; migration asynchrone réelle de `cookies()`/`headers()` (pas le cast `UnsafeUnwrappedCookies` du codemod, supprimé en 16). | Fermait les deux failles hautes de production. `readSession`/`readAdmin`/`requireAdmin` deviennent async, 25 appelants propagés, zéro erreur TypeScript. |
+| 2026-08-28 | `agentRules: false` dans `next.config.mjs`. | Next 16 injecte sinon un bloc « agent rules » dans `CLAUDE.md` à chaque `next dev`. Ce fichier contient les invariants du projet et n'appartient qu'à MIKE : aucun outil n'y écrit. |
 | 2026-08-27 | Le tag `v1.0-mock` reste **local**. | L'environnement d'exécution refuse le push des refs de tags (branches acceptées). Action reportée à MIKE. |
 
 ---
 
 ## Questions ouvertes
 
-### 1. Next.js 14 → 16 — à trancher avant le lot 5 (déploiement)
+### 1. Next.js 14 → 16 — FERMÉE le 28/08/2026
 
-Tara tourne sur **`next@14.2.35`, déjà la dernière 14.x stable** : il n'existe
-aucun correctif dans la ligne 14. Les deux vulnérabilités qui touchent
-réellement la production (`next` et son `postcss` imbriqué, toutes deux
-**hautes**) ne se corrigent que par `next@16.3.3`.
+Montée faite : `next@16.3.3`, `react@19.2.8`. **`npm audit --omit=dev` : 0
+vulnérabilité** — les deux failles hautes de production sont éteintes (ne
+restent que les vulnérabilités d'outillage de test, documentées au lot 0).
 
-Ouvrir `tara.shop` au public sur Next 14, c'est publier avec des failles hautes
-connues. Certaines concernent des fonctions que Tara utilise (App Router,
-en-têtes CSP posés dans `next.config.mjs`, cache RSC) ; d'autres non
-(Pages Router i18n, serveur custom, runtime Edge, API d'optimisation d'images).
-
-**Options** : (a) monter en 16 avant l'ouverture — coût : portage App Router,
-tests à repasser, risque de régression sur les parcours publics ; (b) ouvrir en
-14 en assumant le risque sur un pilote à 10 vendeuses, et monter juste après.
-
-**Aucune décision prise.** À trancher par MIKE.
+Portage réel : les API de requête sont devenues asynchrones (`params`,
+`searchParams`, `cookies()`, `headers()`) — codemod officiel puis migration
+manuelle de `readSession`/`readAdmin`/`requireAdmin`, propagée à 25 appelants.
+Tous les invariants revérifiés au `curl` sur Next 16, y compris sur le
+serveur de **production** (`next start`) : R4 (3/7 sur stock de 3), R3
+(webhook rejoué ×3, faux secret → 401), paiement direct de bout en bout,
+parcours agrégateur avec polling `meta refresh`, OTP, admin, OG, canal
+TikTok. 158 tests + 8 PostgreSQL verts.
 
 ### 2. Tag `v1.0-mock` non poussé
 
@@ -256,6 +255,11 @@ la lecture.
 **Commande de vérification** :
 
 ```bash
-npm audit                 # vue complète (7)
-npm audit --omit=dev      # ce qui part vraiment en production (2)
+npm audit                 # vue complète
+npm audit --omit=dev      # ce qui part vraiment en production
 ```
+
+**Mise à jour du 28/08/2026** : la montée en Next 16.3.3 a éteint les deux
+vulnérabilités de production (`next`, `postcss` imbriqué).
+`npm audit --omit=dev` renvoie désormais **0 vulnérabilité**. Ne restent que
+les vulnérabilités d'outillage (chaîne vitest), jamais expédiées.

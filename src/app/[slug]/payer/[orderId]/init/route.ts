@@ -10,8 +10,9 @@ const input = z.object({
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { slug: string; orderId: string } }
+  props: { params: Promise<{ slug: string; orderId: string }> }
 ) {
+  const params = await props.params;
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   const form = await req.formData();
   const parsed = input.safeParse({

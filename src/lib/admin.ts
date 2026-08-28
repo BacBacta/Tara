@@ -47,8 +47,8 @@ export function makeAdminCookie(adminId: string, email: string) {
   };
 }
 
-export function readAdmin(): { adminId: string; email: string } | null {
-  const raw = cookies().get(COOKIE)?.value;
+export async function readAdmin(): Promise<{ adminId: string; email: string } | null> {
+  const raw = (await cookies()).get(COOKIE)?.value;
   if (!raw) return null;
   const dot = raw.lastIndexOf(".");
   if (dot < 1) return null;
@@ -66,8 +66,8 @@ export function readAdmin(): { adminId: string; email: string } | null {
   }
 }
 
-export function requireAdmin(): { adminId: string; email: string } {
-  const admin = readAdmin();
+export async function requireAdmin(): Promise<{ adminId: string; email: string }> {
+  const admin = await readAdmin();
   if (!admin) redirect("/admin/login");
   return admin;
 }

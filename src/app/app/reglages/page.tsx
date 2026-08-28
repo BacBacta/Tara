@@ -7,11 +7,12 @@ export const dynamic = "force-dynamic";
 
 const COLORS = ["#33418F", "#0E7C66", "#B45309", "#7C3AED", "#BE123C"];
 
-export default async function Reglages({
-  searchParams,
-}: {
-  searchParams: { ok?: string; err?: string };
-}) {
+export default async function Reglages(
+  props: {
+    searchParams: Promise<{ ok?: string; err?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { shop } = await requireShop();
   const paid = isPaidActive(shop);
 

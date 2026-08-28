@@ -5,7 +5,8 @@ import AppNav from "@/components/AppNav";
 
 export const dynamic = "force-dynamic";
 
-export default async function TikTokPage({ searchParams }: { searchParams: { ok?: string; err?: string } }) {
+export default async function TikTokPage(props: { searchParams: Promise<{ ok?: string; err?: string }> }) {
+  const searchParams = await props.searchParams;
   const { sellerId, shop } = await requireShop();
   const identity = await getIdentity(sellerId);
   const active = identity?.status === "active";

@@ -9,7 +9,7 @@ const input = z.object({ operator: z.enum(OPERATORS), phone: phoneCm });
 
 export async function POST(req: NextRequest) {
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-  const session = readSession();
+  const session = await readSession();
   if (!session) return NextResponse.redirect(`${base}/creer`, 303);
   const shop = await getShopBySeller(session.sellerId);
   if (!shop) return NextResponse.redirect(`${base}/creer`, 303);

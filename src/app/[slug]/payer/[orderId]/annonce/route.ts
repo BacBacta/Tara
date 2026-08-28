@@ -14,8 +14,9 @@ import { clientIp, rateLimit } from "@/lib/ratelimit";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { slug: string; orderId: string } }
+  props: { params: Promise<{ slug: string; orderId: string }> }
 ) {
+  const params = await props.params;
   if (!rateLimit(`announce:${clientIp(req.headers)}`, 30, 600).allowed) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }

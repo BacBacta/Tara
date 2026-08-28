@@ -15,7 +15,7 @@ import { lockedProductIds, openDueDrops } from "@/lib/drops";
 export const dynamic = "force-dynamic";
 
 type SP = { v?: string; src?: string; follow?: string };
-type Props = { params: { slug: string }; searchParams: SP };
+type Props = { params: Promise<{ slug: string }>; searchParams: SP };
 
 async function getShop(slug: string) {
   const shop = await db
@@ -82,7 +82,8 @@ async function getShop(slug: string) {
   };
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const params = await props.params;
   const data = await getShop(params.slug);
   if (!data) return {};
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
@@ -114,7 +115,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ShopPage({ params, searchParams }: Props) {
+export default async function ShopPage(props: Props) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const data = await getShop(params.slug);
   if (!data || data.shop.suspended === 1) notFound();
   const { shop, products, taggedVideos, identity, nextDrop, salesCount } = data;
@@ -127,7 +130,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
   await recordVisit({
     shopId: shop.id,
     source: parseSource(searchParams),
-    userAgent: headers().get("user-agent"),
+    userAgent: (await headers()).get("user-agent"),
   });
 
   return (

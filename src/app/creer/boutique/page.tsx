@@ -6,8 +6,9 @@ import NameSlugField from "@/components/NameSlugField";
 
 export const dynamic = "force-dynamic";
 
-export default async function Etape2({ searchParams }: { searchParams: { err?: string } }) {
-  const session = readSession();
+export default async function Etape2(props: { searchParams: Promise<{ err?: string }> }) {
+  const searchParams = await props.searchParams;
+  const session = await readSession();
   if (!session) redirect("/creer");
   const existing = await getShopBySeller(session.sellerId);
   if (existing) redirect("/creer/article");

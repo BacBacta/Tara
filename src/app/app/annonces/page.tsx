@@ -7,7 +7,8 @@ import AppNav from "@/components/AppNav";
 
 export const dynamic = "force-dynamic";
 
-export default async function Annonces({ searchParams }: { searchParams: { ok?: string; err?: string } }) {
+export default async function Annonces(props: { searchParams: Promise<{ ok?: string; err?: string }> }) {
+  const searchParams = await props.searchParams;
   const { shop } = await requireShop();
   const followers = await activeFollowers(shop.id);
   const used = await announcementsThisMonth(shop.id);

@@ -3,9 +3,11 @@ import { getReviewByToken } from "@/lib/reviews";
 
 export const dynamic = "force-dynamic";
 
-export default async function AvisPage({
-  params, searchParams,
-}: { params: { token: string }; searchParams: { ok?: string; err?: string } }) {
+export default async function AvisPage(
+  props: { params: Promise<{ token: string }>; searchParams: Promise<{ ok?: string; err?: string }> }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const review = await getReviewByToken(params.token);
   if (!review) notFound();
 

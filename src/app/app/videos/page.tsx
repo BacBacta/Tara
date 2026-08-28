@@ -6,7 +6,8 @@ import AppNav from "@/components/AppNav";
 
 export const dynamic = "force-dynamic";
 
-export default async function Videos({ searchParams }: { searchParams: { ok?: string } }) {
+export default async function Videos(props: { searchParams: Promise<{ ok?: string }> }) {
+  const searchParams = await props.searchParams;
   const { sellerId, shop } = await requireShop();
   const identity = await getIdentity(sellerId);
   if (identity?.status !== "active") {

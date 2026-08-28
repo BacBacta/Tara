@@ -37,8 +37,8 @@ export function makeSessionCookie(sellerId: string): {
   };
 }
 
-export function readSession(): { sellerId: string } | null {
-  const raw = cookies().get(COOKIE)?.value;
+export async function readSession(): Promise<{ sellerId: string } | null> {
+  const raw = (await cookies()).get(COOKIE)?.value;
   if (!raw) return null;
   const dot = raw.lastIndexOf(".");
   if (dot < 1) return null;

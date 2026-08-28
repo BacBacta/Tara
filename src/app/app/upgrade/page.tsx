@@ -5,11 +5,12 @@ import AppNav from "@/components/AppNav";
 
 export const dynamic = "force-dynamic";
 
-export default async function Upgrade({
-  searchParams,
-}: {
-  searchParams: { from?: string; err?: string };
-}) {
+export default async function Upgrade(
+  props: {
+    searchParams: Promise<{ from?: string; err?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { shop } = await requireShop();
   const paid = isPaidActive(shop);
 

@@ -8,11 +8,13 @@ import TikTokPixel from "@/components/TikTokPixel";
 export const dynamic = "force-dynamic";
 
 type Props = {
-  params: { slug: string; id: string };
-  searchParams: { alert?: string };
+  params: Promise<{ slug: string; id: string }>;
+  searchParams: Promise<{ alert?: string }>;
 };
 
-export default async function DropPage({ params, searchParams }: Props) {
+export default async function DropPage(props: Props) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const shop = await db
     .selectFrom("shops").select(["id", "slug", "name"])
     .where("slug", "=", params.slug).where("suspended", "=", 0)
