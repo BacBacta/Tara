@@ -49,7 +49,12 @@ npm run build
 # à moitié appliqué en cas d'échec.
 npm run db:migrate
 
-# --- Le pré-vol du lot 6 viendra ici, AVANT le redémarrage. ---
+étape "Pré-vol"
+# Bloque la mise en ligne si un fournisseur est encore simulé, si un secret
+# reste à sa valeur d'exemple, si un compte de démonstration survit ou si les
+# boutiques du seed sont en base. « set -e » arrête ici : le service n'est
+# pas redémarré, l'ancienne version continue de tourner.
+node scripts/preflight.mjs
 
 étape "Redémarrage du service"
 sudo systemctl restart "$SERVICE"

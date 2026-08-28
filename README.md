@@ -336,7 +336,69 @@ sudo systemctl restart tara
 > Un retour arrière ne défait **pas** les migrations déjà appliquées. Si la
 > version fautive en contenait une, restaurez d'abord la base (§5).
 
-### 7. Fichiers uploadés
+### 7. Pré-vol — avant toute ouverture au public
+
+```bash
+cd /var/www/tara
+sudo -u tara env $(grep -v '^#' /etc/tara/tara.env | xargs) node scripts/preflight.mjs
+```
+
+Le script est déjà branché dans `scripts/deploy.sh`, **avant le redémarrage** :
+un déploiement qui échoue au pré-vol ne redémarre pas le service, et
+l'ancienne version continue de tourner.
+
+Il **refuse** la mise en production si :
+
+- `OTP_PROVIDER` ou `NOTIFY_PROVIDER` vaut encore `mock` — les codes de
+  vérification s'afficheraient à l'écran, et aucun SMS ne partirait ;
+- `PAYMENT_MOCK_AUTOCONFIRM` n'est pas vide ;
+- `SESSION_SECRET` est vide, fait moins de 32 caractères, ou vaut encore la
+  valeur d'exemple (elle en fait 38 : la longueur seule ne suffit pas) ;
+- un secret de webhook est vide ou d'exemple ;
+- `NEXT_PUBLIC_BASE_URL` pointe sur `localhost` ou n'est pas en `https://` ;
+- `DATABASE_URL` n'est pas PostgreSQL ;
+- une passerelle SMS est sélectionnée sans URL ni clé ;
+- aucun administrateur n'existe, ou l'un d'eux accepte encore un mot de passe
+  de démonstration ;
+- les boutiques du seed (`nadia-friperie-237`, `kev-sneakers`) sont en base ;
+- les pages légales contiennent encore des marqueurs `[À COMPLÉTER]` ;
+- **`PAYMENT_PROVIDER` est simulé alors qu'une boutique encaisse via
+  l'agrégateur** — ses commandes seraient marquées payées sans versement.
+
+Il **signale sans bloquer** un `PAYMENT_PROVIDER` ou un `TIKTOK_PROVIDER`
+simulé quand rien n'en dépend : ces deux branchements attendent des démarches
+externes (contrat agrégateur, app TikTok validée) et les rendre bloquants
+interdirait tout lancement de pilote.
+
+#### Checklist humaine — ce que le script ne peut pas vérifier
+
+Le pré-vol lit des variables et des tables. Il ne peut rien dire de ceci, qui
+reste à faire à la main, dans cet ordre :
+
+- [ ] **Une sauvegarde a été restaurée pour de vrai**, au moins une fois, et
+      les compteurs concordaient (§5). Une sauvegarde jamais restaurée n'est
+      pas une sauvegarde.
+- [ ] **La vitrine a été ouverte depuis le navigateur intégré de TikTok**, sur
+      un vrai téléphone Android d'entrée de gamme, en 3G — pas dans Chrome sur
+      un ordinateur. C'est le seul test qui compte : si le bouton ne réagit
+      pas là, la vente est perdue.
+- [ ] **Une commande a été passée de bout en bout** sur cette même vitrine,
+      jusqu'au message WhatsApp reçu par la vendeuse.
+- [ ] **Les textes vus par l'acheteuse ont été relus contre R1** : nulle part
+      Tara ne doit sembler sécuriser, garantir, séquestrer ou rembourser un
+      paiement. Écrans concernés : fiche article, page de paiement direct,
+      confirmation, et le message WhatsApp pré-rempli.
+- [ ] **Les pages légales ont été relues par un juriste camerounais** et tous
+      les `[À COMPLÉTER]` sont remplis (le script vérifie les marqueurs, pas
+      la justesse du contenu).
+- [ ] **Le certificat TLS est valide** et le renouvellement automatique a été
+      testé : `sudo certbot renew --dry-run`.
+- [ ] **La surveillance externe est en place** et une alerte a été reçue au
+      moins une fois (coupez le service exprès pour vérifier).
+- [ ] **Le mot de passe administrateur est stocké dans un gestionnaire de
+      mots de passe**, pas dans un carnet ni dans un fil WhatsApp.
+
+### 8. Fichiers uploadés
 
 En V1 les photos sont écrites dans `public/uploads/`. Pour passer à un stockage
 objet (S3/R2), remplacer l'écriture disque dans `src/lib/products.ts` — c'est le
