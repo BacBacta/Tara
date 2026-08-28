@@ -33,19 +33,19 @@ export default async function AttenteAbo() {
       {!failed ? (
         <>
           <meta httpEquiv="refresh" content="3" />
-          <div className="h-14 w-14 animate-pulse rounded-full bg-mango/40 text-center text-3xl leading-[3.5rem]">📲</div>
-          <h1 className="text-lg font-extrabold">Regarde ton téléphone</h1>
-          <p className="max-w-[28ch] text-sm text-gray-500">
+          <div className="h-16 w-16 animate-pulse rounded-full bg-mango/40 text-center text-3xl leading-[4rem]">📲</div>
+          <h1 className="font-display text-[23px] tracking-tight">Regarde ton téléphone</h1>
+          <p className="max-w-[28ch] text-[14px] leading-relaxed text-inkSoft">
             Compose ton code PIN {pay.operator === "orange" ? "Orange Money" : "MTN MoMo"} pour
             activer ton abonnement.
           </p>
-          <p className="text-xs text-gray-400">Vérification automatique…</p>
+          <p className="text-[11.5px] text-inkSoft">Vérification automatique…</p>
         </>
       ) : (
         <>
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-3xl">✕</div>
-          <h1 className="text-lg font-extrabold">Paiement non abouti</h1>
-          <a href="/app/upgrade" className="rounded-2xl bg-mango px-6 py-3.5 text-sm font-extrabold text-[#3A2A00]">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50 text-3xl">✕</div>
+          <h1 className="font-display text-[23px] tracking-tight">Paiement non abouti</h1>
+          <a href="/app/upgrade" className="btn-mango w-auto px-8">
             Réessayer
           </a>
         </>

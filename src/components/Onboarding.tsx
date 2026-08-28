@@ -4,15 +4,13 @@
 // Tout est du CSS : l'inscription est un parcours public, elle doit marcher
 // sans JavaScript (R2).
 
+import Alert, { type Tone } from "./Alert";
+import { Wordmark } from "./Wordmark";
+export { Wordmark };
+
 const TOTAL = 4;
 
-export function Wordmark({ className = "" }: { className?: string }) {
-  return (
-    <span className={`font-display tracking-tight text-indigo9 ${className}`}>
-      tara<span className="text-mango">.</span>
-    </span>
-  );
-}
+
 
 /** Progression : les étapes faites et l'étape en cours sont pleines.
  *  Décoratif — l'information est donnée en toutes lettres dans l'en-tête. */
@@ -68,25 +66,17 @@ export function ObShell({
   );
 }
 
-const TONES = {
-  erreur: "border-red-500/15 bg-red-50 text-red-600",
-  attention: "border-mango/30 bg-amber-50 text-amber-700",
-  info: "border-indigo9/20 bg-indigo9/[0.09] text-indigo9",
-} as const;
-
 export function ObAlert({
   tone = "erreur",
   children,
 }: {
-  tone?: keyof typeof TONES;
+  tone?: Tone;
   children: React.ReactNode;
 }) {
   return (
-    <p
-      className={`mb-4 rounded-2xl border px-4 py-3 text-[13px] font-bold leading-snug ${TONES[tone]}`}
-    >
+    <Alert tone={tone} className="mb-4">
       {children}
-    </p>
+    </Alert>
   );
 }
 
