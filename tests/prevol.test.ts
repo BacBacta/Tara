@@ -96,10 +96,27 @@ describe("pré-vol — environnement", () => {
   });
 
   it("refuse une passerelle SMS sélectionnée mais non configurée", () => {
-    // Sans SMS, aucune vendeuse ne peut créer son compte : l'échec serait
-    // silencieux et le pilote entier bloqué.
+    // Sans canal d'OTP, aucune vendeuse ne peut créer son compte : l'échec
+    // serait silencieux et le pilote entier bloqué.
     expect(codes({ ...ENV_SAIN, SMS_API_KEY: "" })).toContain("sms_incomplet");
     expect(codes({ ...ENV_SAIN, NOTIFY_PROVIDER: "whatsapp_cloud" })).toContain("whatsapp_incomplet");
+  });
+
+  it("accepte la configuration WhatsApp de production complète", () => {
+    expect(bloquants({
+      ...ENV_SAIN,
+      NOTIFY_PROVIDER: "whatsapp_cloud",
+      OTP_PROVIDER: "whatsapp",
+      WHATSAPP_PHONE_NUMBER_ID: "123456789",
+      WHATSAPP_ACCESS_TOKEN: "jeton-reel",
+    })).toEqual([]);
+  });
+
+  it("refuse un OTP réel dont le canal de notifications est simulé", () => {
+    // OTP_PROVIDER=whatsapp délègue à NOTIFY_PROVIDER : si celui-ci est mock,
+    // les codes ne partent sur aucun canal réel.
+    const env = { ...ENV_SAIN, OTP_PROVIDER: "whatsapp", NOTIFY_PROVIDER: "mock" };
+    expect(codes(env)).toContain("otp_sans_canal");
   });
 
   it("refuse NODE_ENV autre que production", () => {

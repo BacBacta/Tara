@@ -7,12 +7,12 @@ describe("choix du canal de notification", () => {
     delete process.env.NOTIFY_PROVIDER;
     expect(getNotifyProvider().name).toBe("mock");
   });
-  it("sms = chemin de production par défaut", () => {
+  it("sms = repli si la vérification Meta traîne", () => {
     process.env.NOTIFY_PROVIDER = "sms";
     expect(getNotifyProvider().name).toBe("sms");
     delete process.env.NOTIFY_PROVIDER;
   });
-  it("whatsapp_cloud = option de croissance", () => {
+  it("whatsapp_cloud = chemin de production (décision 2026-08-28)", () => {
     process.env.NOTIFY_PROVIDER = "whatsapp_cloud";
     expect(getNotifyProvider().name).toBe("whatsapp_cloud");
     delete process.env.NOTIFY_PROVIDER;

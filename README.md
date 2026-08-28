@@ -238,11 +238,11 @@ NEXT_PUBLIC_BASE_URL="https://tara.shop"
 SESSION_SECRET="<32+ caractères aléatoires>"
 PAYMENT_WEBHOOK_SECRET="<secret partagé avec l'agrégateur>"
 PAYMENT_PROVIDER="simiz"          # plus jamais "mock" en production
-OTP_PROVIDER="sms"                # passerelle SMS locale
-NOTIFY_PROVIDER="sms"             # mock | sms | whatsapp_cloud
-SMS_API_URL="<endpoint de la passerelle>"
-SMS_API_KEY="<cle>"
-SMS_SENDER_ID="TARA"
+OTP_PROVIDER="whatsapp"           # délègue au canal de notifications
+NOTIFY_PROVIDER="whatsapp_cloud"  # production ; "sms" en repli
+WHATSAPP_PHONE_NUMBER_ID="<id du numéro dédié>"
+WHATSAPP_ACCESS_TOKEN="<jeton permanent Meta>"
+WHATSAPP_TEMPLATE_LANG="fr"
 PAYMENT_MOCK_AUTOCONFIRM=""       # DOIT rester vide en production
 NEXT_PUBLIC_TIKTOK_PIXEL_ID="<id du pixel>"
 ```
@@ -437,7 +437,7 @@ requête réseau n'est faite tant que les vrais fournisseurs ne sont pas branch�
    Aucun écran, aucune route, aucun test à modifier.
 4. Déclarer l'URL de rappel des webhooks : `https://…/api/webhooks/tiktok`.
 
-### Brancher les notifications — SMS d'abord, WhatsApp plus tard
+### Brancher les notifications — WhatsApp Cloud en production
 
 Les notifications (OTP, demande d'avis, annonces, alertes de drop) passent par
 `NotifyProvider` (`src/lib/notify.ts`), qui embarque **trois implémentations
@@ -447,33 +447,49 @@ reste du code.
 | `NOTIFY_PROVIDER` | Usage | Prérequis |
 |---|---|---|
 | `mock` | développement et démonstration | aucun |
-| **`sms`** | **production par défaut** | une passerelle SMS locale : `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER_ID` |
-| `whatsapp_cloud` | option de croissance, à fort volume | société vérifiée par Meta, numéro dédié, moyen de paiement international, templates approuvés |
+| **`whatsapp_cloud`** | **production** (décision du 28/08/2026) | société vérifiée par Meta, numéro dédié, moyen de paiement international, les **cinq templates approuvés** |
+| `sms` | repli si la vérification Meta traîne | une passerelle SMS locale : `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER_ID` |
 
-**Pourquoi le SMS par défaut.** Il atteint 100 % des téléphones (y compris les
-non-smartphones), ne demande ni vérification d'entreprise Meta ni carte bancaire
-internationale, et se facture souvent en FCFA. Il sert aussi l'OTP de connexion
-(`OTP_PROVIDER=sms` réutilise la même passerelle). Concrètement, il ne reste
-qu'à adapter le corps de la requête HTTP au format de la passerelle retenue,
-dans `SmsNotifyProvider` — une dizaine de lignes.
+**Pourquoi WhatsApp.** L'utilisatrice type vit dans TikTok et WhatsApp : un
+message WhatsApp est lu, un SMS l'est de moins en moins, et le template
+WhatsApp coûte moins cher que le SMS camerounais. L'OTP de connexion suit le
+même canal (`OTP_PROVIDER=whatsapp` délègue à `NOTIFY_PROVIDER`). Le prix de ce
+choix est administratif, pas technique — voir la liste des démarches ci-dessous.
 
-**Ce qui ne nécessite aucune passerelle.** Deux des quatre notifications s'en
-passent très bien : prévenir la vendeuse d'une nouvelle vidéo se fait par une
-bannière dans son tableau de bord, et la demande d'avis peut partir de sa propre
-conversation WhatsApp via un lien `wa.me` pré-rempli — elle discute déjà avec la
-cliente. Seuls les envois en masse (annonces, alertes de drop) demandent
-réellement une passerelle.
+**Les cinq templates à faire approuver chez Meta.** Chaque template porte le
+nom exact de son gabarit interne (préfixable via `WHATSAPP_TEMPLATE_PREFIX`),
+avec **un** paramètre de corps `{{1}}`, dans la langue de
+`WHATSAPP_TEMPLATE_LANG` (fr par défaut) :
 
-**Quand passer à WhatsApp Cloud.** Quand le volume rend le SMS coûteux : la
-Cloud API est moins chère au message et bien mieux lue. L'onboarding se fait
-**directement chez Meta, sans BSP obligatoire** — un BSP n'apporte qu'un
-accompagnement et parfois un paiement en monnaie locale. Attention aux
-catégories de templates (`TEMPLATE_CATEGORY` dans le code) : `otp` en
-*authentication*, `new_video_tag` et `review_request` en *utility*,
-`shop_announcement` et `drop_open` en *marketing*. Envoyer du marketing sous une
-catégorie utility expose à une suspension du compte. Les listes de diffusion
-natives de WhatsApp ne sont pas une alternative : plafonnées à 256 contacts,
-elles ne délivrent qu'aux personnes ayant enregistré le numéro de la vendeuse.
+| Template | Catégorie Meta | Le paramètre `{{1}}` reçoit |
+|---|---|---|
+| `otp` | *authentication* | le code seul — gabarit imposé par Meta, bouton « copier le code » inclus |
+| `new_video_tag` | *utility* | le texte et le lien |
+| `review_request` | *utility* | le texte et le lien |
+| `shop_announcement` | *marketing* | le texte et le lien |
+| `drop_open` | *marketing* | le texte et le lien |
+
+**Les catégories ne sont pas décoratives** : envoyer du marketing sous une
+catégorie *utility* expose à une suspension du compte. Et le template `otp`
+n'est pas un template libre — Meta impose son gabarit d'authentification, dont
+le bouton « copier le code » ; le fournisseur envoie le code isolé, jamais la
+phrase complète (qui dépasserait la limite de 15 caractères du paramètre).
+
+**Ce que ce canal n'est pas.** Uniquement des templates transactionnels et
+marketing approuvés — jamais de conversation automatisée : Meta interdit les
+assistants IA généralistes sur l'API Cloud depuis janvier 2026 (`CLAUDE.md`).
+
+**L'onboarding se fait directement chez Meta, sans BSP obligatoire** — un BSP
+n'apporte qu'un accompagnement et parfois un paiement en monnaie locale. Les
+listes de diffusion natives de WhatsApp ne sont pas une alternative :
+plafonnées à 256 contacts, elles ne délivrent qu'aux personnes ayant
+enregistré le numéro de la vendeuse.
+
+**Le repli SMS reste prêt.** Si la vérification Meta traîne, `NOTIFY_PROVIDER=sms`
+et `OTP_PROVIDER=sms` basculent tout sur une passerelle SMS locale — il ne
+reste qu'à adapter le corps de la requête HTTP au format de la passerelle
+retenue, dans `SmsNotifyProvider` (une dizaine de lignes). En attendant l'un ou
+l'autre, `scripts/create-seller.mjs` inscrit les vendeuses pilotes sans OTP.
 
 ### Ordre de priorité des branchements
 

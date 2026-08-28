@@ -141,9 +141,10 @@ export function verifierEnv(env) {
   }
 
   // Un fournisseur déclaré mais non configuré échouerait silencieusement —
-  // et sans SMS, aucune vendeuse ne peut créer son compte.
+  // et sans canal d'OTP, aucune vendeuse ne peut créer son compte.
   const notify = env.NOTIFY_PROVIDER;
-  if (notify === "sms" || env.OTP_PROVIDER === "sms") {
+  const otp = env.OTP_PROVIDER;
+  if (notify === "sms") {
     if (vide(env.SMS_API_URL) || vide(env.SMS_API_KEY)) {
       ajouter(
         "sms_incomplet",
@@ -156,9 +157,19 @@ export function verifierEnv(env) {
     if (vide(env.WHATSAPP_PHONE_NUMBER_ID) || vide(env.WHATSAPP_ACCESS_TOKEN)) {
       ajouter(
         "whatsapp_incomplet",
-        "NOTIFY_PROVIDER vaut whatsapp_cloud mais les identifiants Meta sont incomplets."
+        "NOTIFY_PROVIDER vaut whatsapp_cloud mais WHATSAPP_PHONE_NUMBER_ID ou " +
+          "WHATSAPP_ACCESS_TOKEN est vide : rien ne partirait, OTP compris."
       );
     }
+  }
+  // L'OTP réel (sms ou whatsapp) DÉLÈGUE au canal de notifications : il n'a
+  // pas de configuration propre, mais il exige que ce canal soit réel.
+  if (!vide(otp) && otp !== "mock" && (vide(notify) || notify === "mock")) {
+    ajouter(
+      "otp_sans_canal",
+      `OTP_PROVIDER vaut « ${otp} » mais NOTIFY_PROVIDER est simulé ou vide : ` +
+        "les codes de connexion ne partiraient sur aucun canal réel."
+    );
   }
 
   return problemes;
