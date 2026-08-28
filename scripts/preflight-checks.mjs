@@ -78,6 +78,18 @@ export function verifierEnv(env) {
     );
   }
 
+  // Abonnement : sans agrégateur, la vendeuse paie sur le portefeuille MoMo
+  // de Tara. Si ce numéro manque, elle n'a AUCUN moyen de payer — et
+  // l'abonnement est la seule recette du produit.
+  const agregateur = !vide(env.PAYMENT_PROVIDER) && env.PAYMENT_PROVIDER !== "mock";
+  if (!agregateur && vide(env.TARA_MOMO_NUMBER)) {
+    ajouter(
+      "abonnement_sans_moyen",
+      "Aucun agrégateur et TARA_MOMO_NUMBER est vide : une vendeuse qui veut " +
+        "s'abonner n'a aucun moyen de payer. Renseignez le portefeuille MoMo de Tara."
+    );
+  }
+
   // Session
   const secret = env.SESSION_SECRET;
   if (vide(secret)) {

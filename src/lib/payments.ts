@@ -41,11 +41,8 @@ export function canAcceptPayment(shop: {
     : shop.momo_enabled === 1;
 }
 
-export const phoneCm = z
-  .string()
-  .transform((s) => s.replace(/[^0-9]/g, ""))
-  .refine((s) => /^(237)?6\d{8}$/.test(s), "numéro camerounais invalide")
-  .transform((s) => (s.startsWith("237") ? s : `237${s}`));
+// Réexporté pour ne casser aucun appelant : la règle vit dans phone.ts.
+export { phoneCm } from "./phone";
 
 export interface InitiateResult {
   providerRef: string;
