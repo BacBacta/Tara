@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { readSession } from "@/lib/session";
 import { getShopBySeller } from "@/lib/sellers";
-import { ObShell, inputCls, labelCls, ctaCls } from "@/components/Onboarding";
+import { ObShell, ObAlert, inputCls, labelCls, hintCls } from "@/components/Onboarding";
 import NameSlugField from "@/components/NameSlugField";
 
 export const dynamic = "force-dynamic";
@@ -20,15 +20,20 @@ export default async function Etape2(props: { searchParams: Promise<{ err?: stri
     <ObShell
       step={2}
       title="Le nom de ta boutique"
-      subtitle="Ton lien se crée tout seul — c'est lui que tu mettras dans ta bio TikTok."
+      subtitle="Ton lien se crée à partir du nom — c'est lui que tu mettras dans ta bio TikTok."
     >
       {searchParams.err && (
-        <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
-          Vérifie le nom (3 caractères minimum) et la ville.
-        </p>
+        <ObAlert>Vérifie le nom (3 caractères minimum) et la ville.</ObAlert>
       )}
-      <form method="post" action="/creer/boutique/save" className="flex flex-col gap-4">
-        <NameSlugField host={host} />
+      <form method="post" action="/creer/boutique/save" className="flex flex-col gap-5">
+        <div>
+          <NameSlugField host={host} />
+          {/* Le lien ne se modifie pas ensuite : elle doit le savoir avant. */}
+          <p className={hintCls}>
+            Ce lien ne changera plus — choisis un nom que tu garderas. S&apos;il est déjà
+            pris, un chiffre sera ajouté.
+          </p>
+        </div>
         <label className={labelCls}>
           Ta ville
           <input
@@ -40,7 +45,7 @@ export default async function Etape2(props: { searchParams: Promise<{ err?: stri
             className={inputCls}
           />
         </label>
-        <button type="submit" className={ctaCls}>
+        <button type="submit" className="btn-mango mt-1">
           Continuer →
         </button>
       </form>

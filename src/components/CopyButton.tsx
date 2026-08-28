@@ -1,4 +1,7 @@
 "use client";
+// Confort strictement optionnel (R2) : si le JavaScript ne charge pas, ou si
+// la WebView refuse le presse-papier, le lien reste lisible et sélectionnable
+// juste au-dessus.
 import { useState } from "react";
 
 export default function CopyButton({ text }: { text: string }) {
@@ -11,12 +14,10 @@ export default function CopyButton({ text }: { text: string }) {
           await navigator.clipboard.writeText(text);
           setDone(true);
         } catch {
-          // WebViews sans clipboard : l'utilisatrice copie à la main
+          // WebViews sans presse-papier : l'utilisatrice copie à la main
         }
       }}
-      className={`mt-3 w-full rounded-2xl px-5 py-3.5 text-sm font-extrabold ${
-        done ? "bg-okgreen text-white" : "bg-wagreen text-[#053B1D]"
-      }`}
+      className={done ? "btn bg-okgreen py-4 text-white shadow-none" : "btn-wa"}
     >
       {done ? "✓ Lien copié — colle-le dans ta bio !" : "📋 Copier mon lien"}
     </button>

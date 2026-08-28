@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { readSession } from "@/lib/session";
 import { getShopBySeller } from "@/lib/sellers";
-import { ObShell, inputCls, labelCls, ctaCls } from "@/components/Onboarding";
+import { ObShell, ObAlert, inputCls, labelCls, hintCls } from "@/components/Onboarding";
 
 export const dynamic = "force-dynamic";
 
@@ -18,42 +18,74 @@ export default async function Etape3(props: { searchParams: Promise<{ err?: stri
       title="Ajoute ton premier article"
       subtitle="Une photo, un nom, un prix — comme sur ton statut, mais en mieux."
     >
-      {searchParams.err && (
-        <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
-          Vérifie le nom et le prix de l&apos;article.
-        </p>
-      )}
+      {searchParams.err && <ObAlert>Vérifie le nom et le prix de l&apos;article.</ObAlert>}
+
       <form
         method="post"
         action="/creer/article/save"
         encType="multipart/form-data"
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-5"
       >
-        <label className="flex h-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-gray-300 bg-white text-sm font-bold text-gray-500">
-          <span className="text-2xl">📷</span>
-          Photo de l&apos;article (optionnel)
+        {/* Envoi de fichier en formulaire natif : aucun JavaScript requis (R2). */}
+        <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-3xl border border-dashed border-indigo9/30 bg-cream px-4 py-7 shadow-card text-center">
+          <span aria-hidden className="text-2xl">📷</span>
+          <span className="text-[13.5px] font-extrabold text-indigo9">
+            Ajouter une photo
+          </span>
+          <span className="text-[12px] text-inkSoft">
+            C&apos;est la première chose que voit ta cliente — facultatif
+          </span>
           <input type="file" name="photo" accept="image/*" className="sr-only" />
         </label>
+
         <label className={labelCls}>
           Nom de l&apos;article
-          <input name="name" placeholder="Ex : Robe wax cintrée" required minLength={3} maxLength={80} className={inputCls} />
+          <input
+            name="name"
+            placeholder="Ex : Robe wax cintrée"
+            required
+            minLength={3}
+            maxLength={80}
+            className={inputCls}
+          />
         </label>
+
         <label className={labelCls}>
-          Prix (FCFA)
-          <input name="price" inputMode="numeric" placeholder="8500" required className={inputCls} />
+          Prix en FCFA
+          <input
+            name="price"
+            inputMode="numeric"
+            placeholder="8500"
+            required
+            className={`${inputCls} tabular-nums`}
+          />
         </label>
-        <label className={labelCls}>
-          Lien de ta vidéo TikTok (optionnel)
-          <input name="video_url" inputMode="url" placeholder="https://www.tiktok.com/@toncompte/video/…" className={inputCls} />
-        </label>
-        <p className="-mt-2 text-xs text-gray-500">
-          ▶ La vidéo s&apos;affichera sur la fiche — les clients retrouvent ce qu&apos;ils ont vu.
-        </p>
-        <button type="submit" className={ctaCls}>
+
+        <div>
+          <label className={labelCls}>
+            Lien de ta vidéo TikTok (facultatif)
+            <input
+              name="video_url"
+              inputMode="url"
+              placeholder="tiktok.com/@toi/video/…"
+              className={inputCls}
+            />
+          </label>
+          <p className={hintCls}>
+            ▶ La vidéo s&apos;affichera sur la fiche — tes clientes retrouvent ce qu&apos;elles
+            ont vu.
+          </p>
+        </div>
+
+        <button type="submit" className="btn-mango mt-1">
           Créer ma boutique 🎉
         </button>
       </form>
-      <a href="/creer/fini" className="mt-3 block text-center text-xs font-bold text-gray-500">
+
+      <a
+        href="/creer/fini"
+        className="mt-5 block text-center text-[12.5px] font-bold text-inkSoft underline underline-offset-2"
+      >
         Je le ferai plus tard →
       </a>
     </ObShell>
