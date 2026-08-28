@@ -126,25 +126,55 @@ const demoDir = join(process.cwd(), "public", "demo");
 rmSync(demoDir, { recursive: true, force: true });
 mkdirSync(demoDir, { recursive: true });
 
-const TEINTES = ["#33418F", "#0E7C66", "#B45309", "#7C3AED", "#BE123C", "#1D4ED8"];
-const echappe = (t) =>
-  t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// Palettes bicolores inspirées du wax : fond + encre du motif.
+const PALETTES = [
+  ["#2B3A8F", "#F5A623"], // indigo / mango
+  ["#0E7C66", "#F7F0DC"], // teck / coquille
+  ["#B44E14", "#20242E"], // terre / encre
+  ["#7C3AED", "#FBD38D"], // violet / sable doré
+  ["#20242E", "#E9B44C"], // nuit / laiton
+  ["#BE123C", "#F7E7CE"], // grenat / champagne
+];
 
-for (const { index, name } of demoPhotos) {
-  const fond = TEINTES[index % TEINTES.length];
-  const titre = echappe(name.length > 28 ? `${name.slice(0, 27)}…` : name);
-  // Carrées : c'est le format des vignettes de la vitrine, donc aucun
-  // rognage sur la démo. Taille de police ajustée à la longueur du titre.
-  const taille = Math.min(46, Math.floor(700 / (titre.length * 0.58)));
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800">
-    <rect width="800" height="800" fill="${fond}"/>
-    <rect x="0" y="782" width="800" height="18" fill="#F5A623"/>
-    <text x="400" y="400" text-anchor="middle" font-family="DejaVu Sans, sans-serif"
-          font-size="${taille}" font-weight="bold" fill="#FFFFFF">${titre}</text>
-    <text x="400" y="450" text-anchor="middle" font-family="DejaVu Sans, sans-serif"
-          font-size="24" fill="#FFFFFF" opacity="0.75">photo de démonstration</text>
+// Un « tissu » wax en SVG : cercles concentriques décalés, semis de points,
+// peigne diagonal — puis un léger vignettage studio. Portrait 3:4, le format
+// de la mode. Aucune dépendance : sharp rend le SVG.
+function tissuWax(index) {
+  const [fond, encre] = PALETTES[index % PALETTES.length];
+  const cercles = [];
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 3; c++) {
+      const cx = 100 + c * 200 + (r % 2 ? 100 : 0);
+      const cy = 100 + r * 200;
+      cercles.push(`<g transform="translate(${cx},${cy})">
+        <circle r="78" fill="none" stroke="${encre}" stroke-width="10" opacity="0.85"/>
+        <circle r="52" fill="none" stroke="${encre}" stroke-width="5" opacity="0.55"/>
+        <circle r="26" fill="${encre}" opacity="0.9"/>
+        <circle r="8" fill="${fond}"/>
+      </g>`);
+    }
+  }
+  const points = [];
+  for (let r = 0; r < 8; r++)
+    for (let c = 0; c < 6; c++)
+      points.push(`<circle cx="${50 + c * 100}" cy="${50 + r * 100}" r="6" fill="${encre}" opacity="0.35"/>`);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
+    <rect width="600" height="800" fill="${fond}"/>
+    <g opacity="0.9">${points.join("")}</g>
+    ${cercles.join("")}
+    <g stroke="${encre}" stroke-width="3" opacity="0.25">
+      ${Array.from({ length: 12 }, (_, i) => `<line x1="${i * 60 - 100}" y1="820" x2="${i * 60 + 240}" y2="-20"/>`).join("")}
+    </g>
+    <rect width="600" height="800" fill="url(#v)"/>
+    <defs><radialGradient id="v" cx="50%" cy="42%" r="75%">
+      <stop offset="55%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.28"/>
+    </radialGradient></defs>
   </svg>`;
-  await sharp(Buffer.from(svg)).webp({ quality: 80 }).toFile(join(demoDir, `p${index}.webp`));
+}
+
+for (const { index } of demoPhotos) {
+  await sharp(Buffer.from(tissuWax(index))).webp({ quality: 82 }).toFile(join(demoDir, `p${index}.webp`));
 }
 
 console.log(`Seed OK — boutiques : nadia-friperie-237 et kev-sneakers (${demoPhotos.length} photos de démo générées)`);

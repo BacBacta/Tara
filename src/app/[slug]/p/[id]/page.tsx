@@ -185,13 +185,13 @@ export default async function ProductPage(props: Props) {
           src={photo}
           alt={product.name}
           width={800}
-          height={600}
+          height={1000}
           decoding="async"
-          className="aspect-[4/3] w-full bg-sand object-cover"
+          className="aspect-[4/5] w-full bg-sand object-cover"
         />
       ) : (
         <div
-          className={`flex aspect-[4/3] items-center justify-center bg-gradient-to-br text-6xl ${GRADS[product.position % 4]}`}
+          className={`flex aspect-[4/5] items-center justify-center bg-gradient-to-br text-6xl ${GRADS[product.position % 4]}`}
         >
           🛍️
         </div>
@@ -199,18 +199,27 @@ export default async function ProductPage(props: Props) {
 
       <section className="relative -mt-5 rounded-t-[28px] border-t border-ink/[0.06] bg-cream px-5 pb-6 pt-5 shadow-[0_-12px_32px_-18px_rgba(37,47,104,.25)]">
         <div aria-hidden className="absolute left-1/2 top-2 h-1 w-10 -translate-x-1/2 rounded-full bg-ink/10" />
-        <h1 className="font-display text-[19px] leading-snug tracking-tight">{product.name}</h1>
-        <p className="mt-1.5 font-display text-[26px] tabular-nums tracking-tight text-indigo9">
-          {fcfa(product.price_fcfa)}
+        <p className="text-[10.5px] font-extrabold uppercase tracking-micro text-inkSoft">
+          {shop.name}
         </p>
-        {product.description && (
-          <p className="mt-2.5 text-sm leading-relaxed text-inkSoft">{product.description}</p>
-        )}
-        {product.stock_state === "low" && (
-          <p className="chip mt-2.5 bg-amber-50 font-extrabold text-amber-700">
-            ⚡ {t(lang, "shop.lowStock")}
+        <h1 className="mt-1 font-display text-[21px] leading-snug tracking-tight">{product.name}</h1>
+        <div className="mt-2 flex items-baseline justify-between gap-3">
+          <p className="font-display text-[26px] tabular-nums tracking-tight">
+            {fcfa(product.price_fcfa)}
           </p>
-        )}
+          {!out && (
+            <p
+              className={`chip shrink-0 font-extrabold ${
+                product.stock_state === "low"
+                  ? "bg-amber-50 text-amber-700"
+                  : "bg-emerald-50 text-okgreen"
+              }`}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+              {product.stock_state === "low" ? t(lang, "shop.lowStock") : t(lang, "shop.inStock")}
+            </p>
+          )}
+        </div>
 
         {/* variantes */}
         {[...groups.entries()].map(([label, values]) => (
@@ -245,6 +254,24 @@ export default async function ProductPage(props: Props) {
             />
           </div>
         )}
+
+        {/* Accordéons natifs <details> : le geste e-commerce, sans JavaScript */}
+        <div className="mt-6">
+          {product.description && (
+            <details className="acc" open>
+              <summary>{t(lang, "pdp.description")}</summary>
+              <p className="-mt-1 pb-4 text-sm leading-relaxed text-inkSoft">
+                {product.description}
+              </p>
+            </details>
+          )}
+          <details className="acc">
+            <summary>{t(lang, "pdp.payDelivery")}</summary>
+            <p className="-mt-1 pb-4 text-sm leading-relaxed text-inkSoft">
+              🔒 {t(lang, "shop.securePayment")}
+            </p>
+          </details>
+        </div>
 
         {reviews.length > 0 && (
           <div className="mt-6 border-t border-ink/[0.07] pt-4">

@@ -141,41 +141,46 @@ export default async function ShopPage(props: Props) {
   return (
     <main className="mx-auto max-w-md pb-8">
       <TikTokPixel />
-      {/* bannière : la couleur de la vendeuse, éclairée — halos + grain, CSS pur */}
-      <div
-        className="grain h-36"
-        style={{
-          background: `radial-gradient(120% 90% at 85% -20%, rgba(255,255,255,.32), transparent 55%), radial-gradient(100% 80% at 0% 100%, rgba(20,25,54,.45), transparent 60%), linear-gradient(150deg, ${shop.banner_color}, #1A2148 130%)`,
-        }}
-      />
-      {/* carte boutique */}
-      <section className="card relative mx-3 -mt-14 p-5 shadow-float">
-        <div className="absolute -top-9 left-5 flex h-[72px] w-[72px] items-center justify-center rounded-full bg-gradient-to-br from-[#FFD9A8] to-[#D98A4A] text-[26px] shadow-card ring-4 ring-cream">
-          🛍️
+      {/* Ruban : la couleur de la vendeuse, réduite à une signature.
+          Le reste de l'en-tête est clair — le produit est roi. */}
+      <div className="h-1.5" style={{ background: shop.banner_color }} />
+      <header className="px-5 pb-2 pt-6">
+        <div className="flex items-center gap-4">
+          <div
+            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-2xl shadow-card ring-1 ring-ink/[0.06]"
+            style={{ background: `linear-gradient(135deg, ${shop.banner_color}40, ${shop.banner_color}14)` }}
+          >
+            🛍️
+          </div>
+          <div className="min-w-0">
+            <h1 className="truncate font-display text-[22px] leading-tight tracking-tight">
+              {shop.name}
+            </h1>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] font-medium text-inkSoft">
+              <span>📍 {shop.city}</span>
+              <span className="text-ink/20">·</span>
+              <span><b className="tabular-nums text-ink">{salesCount}</b> {t(lang, "shop.sales")}</span>
+              {identity && (
+                <>
+                  <span className="text-ink/20">·</span>
+                  <span className="font-bold text-indigo9">✓ @{identity.username}</span>
+                </>
+              )}
+            </p>
+          </div>
         </div>
-        <h1 className="mt-7 font-display text-[22px] leading-tight tracking-tight">{shop.name}</h1>
-        {identity && (
-          <p className="chip mt-1.5 border border-indigo9/15 bg-indigo9/[0.06] font-extrabold text-indigo9">
-            ✓ Compte TikTok vérifié · @{identity.username}
-          </p>
-        )}
-        <p className="mt-1.5 text-xs font-semibold text-inkSoft">
-          📍 {shop.city}
-          <span className="mx-2 text-ink/20">·</span>
-          <b className="tabular-nums text-ink">{salesCount}</b> {t(lang, "shop.sales")}
-        </p>
 
         {/* V2 — suivi de boutique (opt-in explicite) */}
         {searchParams.follow === "ok" ? (
-          <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11px] font-bold text-okgreen">
+          <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-[11px] font-bold text-okgreen">
             ✓ {lang === "en" ? "You will receive new arrivals on WhatsApp." : "Tu recevras les nouveautés sur WhatsApp."}
           </p>
         ) : (
-          <details className="mt-3">
-            <summary className="chip cursor-pointer border border-ink/10 bg-sand font-extrabold text-indigo9 transition-colors active:bg-ink/5">
+          <details className="mt-4">
+            <summary className="chip cursor-pointer border border-ink/10 bg-cream font-extrabold text-ink shadow-insetHair transition-colors active:bg-ink/5">
               🔔 {lang === "en" ? "Follow this shop" : "Suivre la boutique"}
             </summary>
-            <form method="post" action={`/${shop.slug}/suivre`} className="mt-2 flex gap-1.5">
+            <form method="post" action={`/${shop.slug}/suivre`} className="mt-2.5 flex gap-1.5">
               <input
                 name="phone"
                 inputMode="tel"
@@ -183,18 +188,18 @@ export default async function ShopPage(props: Props) {
                 placeholder="6 77 12 34 56"
                 className="min-w-0 flex-1 rounded-xl border border-ink/10 bg-cream px-3 py-2.5 text-xs font-bold shadow-insetHair placeholder:text-ink/30 focus:border-indigo9 focus:outline-none"
               />
-              <button className="rounded-xl bg-indigo9 px-3.5 py-2.5 text-[11px] font-extrabold text-white transition-transform active:scale-95">
+              <button className="rounded-xl bg-ink px-3.5 py-2.5 text-[11px] font-extrabold text-white transition-transform active:scale-95">
                 {lang === "en" ? "Follow" : "Suivre"}
               </button>
             </form>
-            <p className="mt-1 text-[10px] text-gray-400">
+            <p className="mt-1.5 text-[10px] text-ink/40">
               {lang === "en"
                 ? "Max 4 messages/month. Unsubscribe in one click."
                 : "4 messages par mois maximum. Désabonnement en un clic."}
             </p>
           </details>
         )}
-      </section>
+      </header>
 
       {/* V2 — prochain drop */}
       {nextDrop && (
@@ -222,13 +227,25 @@ export default async function ShopPage(props: Props) {
               <Link
                 key={`${v.video_id}-${v.product_id}`}
                 href={`/${shop.slug}/p/${v.product_id}${attr ? attr + "&" : "?"}v=${v.video_id}`}
-                className="grain relative h-36 w-[104px] shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-[#3B4784] to-indigoNight p-2.5 text-[10px] font-semibold text-white shadow-card transition-transform active:scale-95"
+                className="relative h-40 w-[112px] shrink-0 overflow-hidden rounded-2xl bg-indigoNight text-[10px] font-semibold text-white shadow-card transition-transform active:scale-95"
               >
-                <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-[9px] backdrop-blur-sm">▶</span>
-                <span className="absolute bottom-2 left-2.5 right-2.5 leading-tight [text-shadow:0_1px_6px_rgba(0,0,0,.5)]">
+                {photos.get(v.product_id) && (
+                  <img
+                    src={photos.get(v.product_id)}
+                    alt=""
+                    width={224}
+                    height={320}
+                    loading="lazy"
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                )}
+                <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/10 to-ink/20" />
+                <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-ink/40 text-[9px] backdrop-blur-sm">▶</span>
+                <span className="absolute bottom-2 left-2.5 right-2.5 leading-tight [text-shadow:0_1px_6px_rgba(0,0,0,.6)]">
                   {v.product_name}
                 </span>
-                <span className="absolute bottom-10 left-2.5 text-[9px] tabular-nums opacity-70">
+                <span className="absolute bottom-11 left-2.5 text-[9px] tabular-nums opacity-75">
                   {v.views.toLocaleString("fr-FR")} vues
                 </span>
               </Link>
@@ -244,10 +261,22 @@ export default async function ShopPage(props: Props) {
               <Link
                 key={p.id}
                 href={`/${shop.slug}/p/${p.id}${attr}`}
-                className="grain relative h-36 w-[104px] shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-[#3B4784] to-indigoNight p-2.5 text-[10px] font-semibold text-white shadow-card transition-transform active:scale-95"
+                className="relative h-40 w-[112px] shrink-0 overflow-hidden rounded-2xl bg-indigoNight text-[10px] font-semibold text-white shadow-card transition-transform active:scale-95"
               >
-                <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-[9px] backdrop-blur-sm">▶</span>
-                <span className="absolute bottom-2 left-2.5 right-2.5 leading-tight [text-shadow:0_1px_6px_rgba(0,0,0,.5)]">
+                {photos.get(p.id) && (
+                  <img
+                    src={photos.get(p.id)}
+                    alt=""
+                    width={224}
+                    height={320}
+                    loading="lazy"
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                )}
+                <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/10 to-ink/20" />
+                <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-ink/40 text-[9px] backdrop-blur-sm">▶</span>
+                <span className="absolute bottom-2 left-2.5 right-2.5 leading-tight [text-shadow:0_1px_6px_rgba(0,0,0,.6)]">
                   {p.name}
                 </span>
               </Link>
@@ -258,53 +287,54 @@ export default async function ShopPage(props: Props) {
 
       {/* grille articles */}
       <h2 className="label-micro mx-4 mb-2.5 mt-6">{t(lang, "shop.products")}</h2>
-      <div className="grid grid-cols-2 gap-2.5 px-3">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-6 px-4">
         {products.map((p, i) => (
           <Link
             key={p.id}
             href={`/${shop.slug}/p/${p.id}${attr}`}
-            className="card overflow-hidden rounded-2xl transition-transform active:scale-[0.97]"
+            className="group transition-transform active:scale-[0.98]"
           >
-            {photos.get(p.id) ? (
-              // Photo déjà redimensionnée à 800 px en WebP à l'envoi : pas
-              // d'optimiseur à interroger, une simple balise <img> suffit et
-              // ne coûte aucun JavaScript (R2). width/height réservent la
-              // place pour éviter que la grille ne saute en 3G.
-              <img
-                src={photos.get(p.id)}
-                alt={p.name}
-                width={400}
-                height={400}
-                loading="lazy"
-                decoding="async"
-                className="aspect-square w-full bg-sand object-cover"
-              />
-            ) : (
-              <div
-                className={`flex aspect-square items-center justify-center text-4xl ${
-                  ["bg-gradient-to-br from-[#FBE3D2] to-[#F2B98F]",
-                   "bg-gradient-to-br from-[#D9E6F6] to-[#A9C3E8]",
-                   "bg-gradient-to-br from-[#EFE0F6] to-[#CBAAE2]",
-                   "bg-gradient-to-br from-[#E0F0E4] to-[#A9D4B4]"][i % 4]
-                }`}
-              >
-                🛍️
-              </div>
-            )}
-            <p className="line-clamp-2 min-h-[2rem] px-3 pt-2.5 text-xs font-bold leading-tight">{p.name}</p>
-            <p className="px-3 pb-2 pt-1 font-display text-[15px] tabular-nums tracking-tight text-indigo9">
-              {fcfa(p.price_fcfa)}
+            <div className="relative overflow-hidden rounded-2xl bg-sand shadow-insetHair">
+              {photos.get(p.id) ? (
+                // Photo déjà redimensionnée en WebP à l'envoi : pas
+                // d'optimiseur, aucune coût JavaScript (R2). width/height
+                // réservent la place — la grille ne saute pas en 3G.
+                <img
+                  src={photos.get(p.id)}
+                  alt={p.name}
+                  width={600}
+                  height={800}
+                  loading="lazy"
+                  decoding="async"
+                  className="aspect-[3/4] w-full object-cover"
+                />
+              ) : (
+                <div className="flex aspect-[3/4] items-center justify-center bg-gradient-to-b from-sand to-ink/[0.04] text-3xl opacity-60">
+                  🛍️
+                </div>
+              )}
+              {p.video_url && (
+                <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-ink/45 text-[10px] text-white backdrop-blur-sm">
+                  ▶
+                </span>
+              )}
+              {p.stock_state === "out" && (
+                <span className="absolute inset-x-0 bottom-0 bg-ink/60 py-1.5 text-center text-[10px] font-extrabold uppercase tracking-micro text-white backdrop-blur-sm">
+                  {t(lang, "shop.outOfStock")}
+                </span>
+              )}
+            </div>
+            <p className="mt-2 line-clamp-2 text-[12.5px] font-medium leading-snug text-ink">
+              {p.name}
             </p>
-            {p.video_url && (
-              <span className="mx-3 mb-2.5 inline-block rounded-full bg-indigo9/[0.07] px-2 py-0.5 text-[9px] font-extrabold text-indigo9">
-                ▶ vidéo
-              </span>
-            )}
-            {p.stock_state === "out" && (
-              <span className="mx-3 mb-2.5 inline-block rounded-full bg-red-50 px-2 py-0.5 text-[9px] font-extrabold text-red-600">
-                {t(lang, "shop.outOfStock")}
-              </span>
-            )}
+            <p className="mt-0.5 text-[13.5px] font-bold tabular-nums tracking-tight">
+              {fcfa(p.price_fcfa)}
+              {p.stock_state === "low" && (
+                <span className="ml-2 text-[10px] font-extrabold text-amber-600">
+                  {t(lang, "shop.lowStock")}
+                </span>
+              )}
+            </p>
           </Link>
         ))}
       </div>
