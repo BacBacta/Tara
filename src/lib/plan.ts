@@ -39,3 +39,19 @@ export async function canAddProduct(
   if (isPaidActive(shop)) return true;
   return (await countActiveProducts(shop.id, dbi)) < FREE_PRODUCT_LIMIT;
 }
+
+/**
+ * Jours restants avant l'expiration de l'abonnement (négatif = déjà expiré,
+ * null = pas d'abonnement). Sert au back-office à repérer les relances :
+ * la question du pilote n'est pas « combien sont actives » mais « combien
+ * ont repayé une deuxième fois ».
+ */
+export function joursAvantExpiration(
+  expire: string | null,
+  maintenant = Date.now()
+): number | null {
+  if (!expire) return null;
+  const t = new Date(expire).getTime();
+  if (Number.isNaN(t)) return null;
+  return Math.ceil((t - maintenant) / 86400_000);
+}

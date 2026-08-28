@@ -1,8 +1,11 @@
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { fcfa } from "@/lib/format";
-import { isPaidActive } from "@/lib/plan";
+import { isPaidActive, joursAvantExpiration } from "@/lib/plan";
 import { isRevenue, latestSubscriptionByShop } from "@/lib/subscriptions";
+import AdminShell from "@/components/AdminShell";
+import Alert from "@/components/Alert";
+import { inputCls, labelCls } from "@/components/ob-styles";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +15,9 @@ const ERR_FR: Record<string, string> = {
   shop_not_found: "Boutique introuvable.",
   input: "Formulaire incomplet ou invalide.",
 };
+
+const selectCls =
+  "mt-2 w-full rounded-2xl border border-ink/10 bg-cream px-3.5 py-3 text-[14px] font-bold text-ink";
 
 export default async function AdminHome(
   props: {
@@ -55,6 +61,11 @@ export default async function AdminHome(
   const paidShops = shops.filter((s) => isPaidActive(s)).length;
   const activeShops = shops.filter((s) => (ordersByShop.get(s.id) ?? 0) > 0).length;
   const conversion = shops.length ? Math.round((paidShops / shops.length) * 100) : 0;
+
+  // Ce qui demande une relance : la question du pilote est « ont-elles repayé ? »
+  const aRelancer = shops
+    .filter((s) => isPaidActive(s) && (joursAvantExpiration(s.plan_expires_at) ?? 99) <= 7)
+    .sort((a, b) => (joursAvantExpiration(a.plan_expires_at) ?? 0) - (joursAvantExpiration(b.plan_expires_at) ?? 0));
 
   const revenue = await db
     .selectFrom("payments")
@@ -123,100 +134,196 @@ export default async function AdminHome(
     ["Actives 30 j", String(activeShops)],
     ["Commandes 30 j", String(totalOrders)],
     ["GMV encaissée", fcfa(Number(revenue?.s ?? 0))],
-    [
-      "Revenu abos",
-      fcfa(Number(subRevenue?.s ?? 0) + Number(manualRevenue?.s ?? 0)),
-    ],
+    ["Revenu abos", fcfa(Number(subRevenue?.s ?? 0) + Number(manualRevenue?.s ?? 0))],
   ];
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-lg font-extrabold">Administration Tara</h1>
-        <div className="flex items-center gap-3 text-xs">
-          <span className="text-gray-500">{admin.email}</span>
-          <a href="/admin/export" className="font-extrabold text-indigo9 underline">
-            ⬇ Export CSV
-          </a>
-          <form method="post" action="/admin/logout">
-            <button className="font-bold text-gray-500">Déconnexion</button>
-          </form>
-        </div>
-      </header>
-
+    <AdminShell
+      email={admin.email}
+      actif="boutiques"
+      title="Boutiques"
+      subtitle="La GMV passe de l'acheteuse à la vendeuse — Tara ne l'encaisse jamais. Seul le revenu d'abonnement entre ici."
+    >
       {searchParams.err && (
-        <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
-          {ERR_FR[searchParams.err] ?? "Action impossible."}
-        </p>
+        <Alert className="mb-4">{ERR_FR[searchParams.err] ?? "Action impossible."}</Alert>
       )}
       {searchParams.ok && (
-        <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-okgreen">
+        <Alert tone="ok" className="mb-4">
           ✓ Action effectuée et journalisée.
-        </p>
+        </Alert>
       )}
 
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {kpi.map(([label, value]) => (
-          <div key={label} className="rounded-2xl border border-gray-200 bg-white p-3">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">
+          <div key={label} className="card px-3 py-3.5">
+            <p className="text-[9.5px] font-extrabold uppercase tracking-micro text-inkSoft">
               {label}
             </p>
-            <p className="mt-1 text-sm font-extrabold tabular-nums">{value}</p>
+            <p className="mt-1.5 font-display text-[15px] leading-none tabular-nums">{value}</p>
           </div>
         ))}
       </div>
 
+      {/* Les abonnements qui arrivent à terme : c'est la question du pilote. */}
+      {aRelancer.length > 0 && (
+        <>
+          <h2 className="label-micro mb-2.5 mt-7">À relancer — abonnements à échéance</h2>
+          <div className="flex flex-col gap-2">
+            {aRelancer.map((s) => {
+              const j = joursAvantExpiration(s.plan_expires_at) ?? 0;
+              return (
+                <div key={s.id} className="card flex items-center gap-3 rounded-2xl px-4 py-3">
+                  <span className="chip bg-amber-50 font-extrabold text-amber-700">
+                    {j <= 0 ? "expire aujourd'hui" : `dans ${j} j`}
+                  </span>
+                  <b className="min-w-0 flex-1 truncate text-[13px]">{s.name}</b>
+                  <a
+                    href={`https://wa.me/${s.seller_phone}`}
+                    className="chip bg-wagreen/15 font-extrabold text-waDeep"
+                  >
+                    💬 Relancer
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       <a
         href="/admin/pilote"
-        className="mt-6 flex items-center justify-between rounded-2xl border-2 border-indigo9/25 bg-white px-4 py-3 text-sm font-extrabold text-indigo9"
+        className="card mt-7 flex items-center justify-between border-indigo9/20 px-4 py-3.5 text-[13.5px] font-extrabold text-indigo9"
       >
         📈 Écran Pilote — les 4 chiffres qui décident de la suite
-        <span>→</span>
+        <span aria-hidden>→</span>
       </a>
 
-      <h2 className="mb-2 mt-6 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-        Boutiques
+      {/* ===== Lot 2 : activation manuelle de l'abonnement =====
+          Remonté ici : sans agrégateur, c'est le geste le plus fréquent. */}
+      <h2 id="abonnements" className="label-micro mb-2.5 mt-7">
+        Activer un abonnement à la main
       </h2>
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-sand text-[10px] uppercase tracking-wider text-gray-500">
+      <div className="card p-4">
+        <p className="mb-4 text-[12.5px] leading-relaxed text-inkSoft">
+          La vendeuse envoie les {fcfa(3000)} sur le MoMo de Tara. Saisis ici la référence
+          de la transaction reçue, puis active. Une même référence ne peut créditer la
+          boutique qu&apos;une seule fois.
+        </p>
+        <form method="post" action="/admin/abonnement" className="flex flex-col gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className={labelCls}>
+              Boutique
+              <select name="shop" required className={selectCls}>
+                {shops.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.slug})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className={labelCls}>
+              Durée
+              <select name="months" className={selectCls}>
+                {[1, 2, 3, 6, 12].map((m) => (
+                  <option key={m} value={m}>
+                    {m} mois
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="flex gap-2.5">
+            <label className="flex-1 cursor-pointer">
+              <input type="radio" name="origin" value="manual" defaultChecked className="peer sr-only" />
+              <span className="block rounded-2xl border border-ink/10 bg-cream py-2.5 text-center text-[13.5px] font-extrabold peer-checked:border-indigo9 peer-checked:bg-indigo9/[0.06] peer-checked:text-indigo9">
+                Payé — {fcfa(3000)}/mois
+              </span>
+            </label>
+            <label className="flex-1 cursor-pointer">
+              <input type="radio" name="origin" value="offered" className="peer sr-only" />
+              <span className="block rounded-2xl border border-ink/10 bg-cream py-2.5 text-center text-[13.5px] font-extrabold peer-checked:border-mango peer-checked:bg-amber-50 peer-checked:text-amber-700">
+                Offert — pilote
+              </span>
+            </label>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className={labelCls}>
+              Référence du paiement reçu
+              <input
+                name="payment_ref"
+                maxLength={80}
+                placeholder="ex : MP240827.1432.A12345"
+                className={`${inputCls} py-3 text-[14px]`}
+              />
+            </label>
+            <label className={labelCls}>
+              Note
+              <input
+                name="note"
+                maxLength={200}
+                placeholder="facultatif"
+                className={`${inputCls} py-3 text-[14px]`}
+              />
+            </label>
+          </div>
+
+          <button className="btn-mango sm:w-auto sm:self-start sm:px-8">
+            Activer l&apos;abonnement
+          </button>
+          <p className="text-[11.5px] leading-relaxed text-inkSoft">
+            Obligatoire pour un abonnement payé : sans référence, l&apos;encaissement serait
+            intraçable. Une période offerte ne compte pas dans le revenu.
+          </p>
+        </form>
+      </div>
+
+      <h2 className="label-micro mb-2.5 mt-7">Toutes les boutiques</h2>
+      <div className="card overflow-x-auto p-0">
+        <table className="tbl">
+          <thead>
             <tr>
-              <th className="px-3 py-2">Boutique</th>
-              <th className="px-3 py-2">Ville</th>
-              <th className="px-3 py-2">Plan</th>
-              <th className="px-3 py-2">Abonnement</th>
-              <th className="px-3 py-2 text-right">Articles</th>
-              <th className="px-3 py-2 text-right">Cmd 30 j</th>
-              <th className="px-3 py-2">État</th>
-              <th className="px-3 py-2" />
+              <th>Boutique</th>
+              <th>Ville</th>
+              <th>Plan</th>
+              <th>Abonnement</th>
+              <th className="text-right">Articles</th>
+              <th className="text-right">Cmd 30 j</th>
+              <th>État</th>
+              <th />
             </tr>
           </thead>
           <tbody>
+            {shops.length === 0 && (
+              <tr>
+                <td colSpan={8} className="text-inkSoft">
+                  Aucune boutique.
+                </td>
+              </tr>
+            )}
             {shops.map((s) => (
-              <tr key={s.id} className="border-t border-gray-100">
-                <td className="px-3 py-2">
-                  <a href={`/${s.slug}`} className="font-bold text-indigo9 underline">
+              <tr key={s.id}>
+                <td>
+                  <a href={`/${s.slug}`} className="font-bold text-indigo9 underline underline-offset-2">
                     {s.name}
                   </a>
-                  <div className="text-[10px] text-gray-400">{s.seller_phone}</div>
+                  <div className="text-[10.5px] tabular-nums text-inkSoft">{s.seller_phone}</div>
                 </td>
-                <td className="px-3 py-2">{s.city}</td>
-                <td className="px-3 py-2">
+                <td>{s.city}</td>
+                <td>
                   {isPaidActive(s) ? (
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-extrabold text-okgreen">
-                      payant
-                    </span>
+                    <span className="chip bg-emerald-50 font-extrabold text-okgreen">payant</span>
                   ) : (
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-extrabold text-gray-500">
-                      gratuit
-                    </span>
+                    <span className="chip bg-ink/[0.06] font-extrabold text-inkSoft">gratuit</span>
                   )}
                 </td>
-                <td className="px-3 py-2">
+                <td>
                   {(() => {
                     const sub = subsByShop.get(s.id);
                     if (!isPaidActive(s) || !s.plan_expires_at) {
-                      return <span className="text-gray-400">—</span>;
+                      return <span className="text-inkSoft/60">—</span>;
                     }
                     const offered = sub ? !isRevenue(sub.origin) : false;
                     return (
@@ -225,39 +332,29 @@ export default async function AdminHome(
                           {new Date(s.plan_expires_at).toLocaleDateString("fr-FR")}
                         </span>
                         <span
-                          className={`ml-1.5 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                            offered
-                              ? "bg-amber-50 text-amber-700"
-                              : "bg-emerald-50 text-okgreen"
+                          className={`chip ml-1.5 font-extrabold ${
+                            offered ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-okgreen"
                           }`}
                         >
                           {offered ? "offert" : "payé"}
                         </span>
                         {sub?.payment_ref && (
-                          <div className="text-[10px] text-gray-400">
-                            réf. {sub.payment_ref}
-                          </div>
+                          <div className="text-[10.5px] text-inkSoft">réf. {sub.payment_ref}</div>
                         )}
                       </>
                     );
                   })()}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {productsByShop.get(s.id) ?? 0}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {ordersByShop.get(s.id) ?? 0}
-                </td>
-                <td className="px-3 py-2">
+                <td className="text-right tabular-nums">{productsByShop.get(s.id) ?? 0}</td>
+                <td className="text-right tabular-nums">{ordersByShop.get(s.id) ?? 0}</td>
+                <td>
                   {s.suspended === 1 ? (
-                    <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-extrabold text-red-500">
-                      suspendue
-                    </span>
+                    <span className="chip bg-red-50 font-extrabold text-red-500">suspendue</span>
                   ) : (
-                    "—"
+                    <span className="text-inkSoft/60">—</span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-right">
+                <td className="text-right">
                   <form method="post" action="/admin/actions">
                     <input type="hidden" name="shop" value={s.id} />
                     <input
@@ -266,9 +363,9 @@ export default async function AdminHome(
                       value={s.suspended === 1 ? "unsuspend" : "suspend"}
                     />
                     <button
-                      className={`rounded-full border px-2.5 py-0.5 text-[10px] font-extrabold ${
+                      className={`chip border font-extrabold transition-transform active:scale-[0.97] ${
                         s.suspended === 1
-                          ? "border-emerald-300 text-okgreen"
+                          ? "border-okgreen/40 text-okgreen"
                           : "border-red-200 text-red-500"
                       }`}
                     >
@@ -282,114 +379,26 @@ export default async function AdminHome(
         </table>
       </div>
 
-      {/* ===== Lot 2 : activation manuelle de l'abonnement ===== */}
-      <h2
-        id="abonnements"
-        className="mb-2 mt-6 text-[11px] font-extrabold uppercase tracking-widest text-gray-500"
-      >
-        Activer un abonnement à la main
-      </h2>
-      <div className="rounded-2xl border border-gray-200 bg-white p-4">
-        <p className="mb-3 text-xs text-gray-500">
-          La vendeuse envoie les {fcfa(3000)} sur le MoMo personnel. Saisis ici la
-          référence de la transaction reçue, puis active. Une même référence ne
-          peut créditer la boutique qu&apos;une seule fois.
-        </p>
-        <form method="post" action="/admin/abonnement" className="flex flex-col gap-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-              Boutique
-              <select
-                name="shop"
-                required
-                className="mt-1 w-full rounded-xl border-2 border-gray-200 bg-white px-3 py-2 text-sm font-bold text-ink"
-              >
-                {shops.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.slug})
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-              Durée
-              <select
-                name="months"
-                className="mt-1 w-full rounded-xl border-2 border-gray-200 bg-white px-3 py-2 text-sm font-bold text-ink"
-              >
-                {[1, 2, 3, 6, 12].map((m) => (
-                  <option key={m} value={m}>
-                    {m} mois
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="flex gap-2">
-            <label className="flex-1 cursor-pointer">
-              <input type="radio" name="origin" value="manual" defaultChecked className="peer sr-only" />
-              <span className="block rounded-xl border-2 border-gray-200 bg-white py-2.5 text-center text-sm font-extrabold peer-checked:border-indigo9 peer-checked:bg-indigo-50 peer-checked:text-indigo9">
-                Payé — {fcfa(3000)}/mois
-              </span>
-            </label>
-            <label className="flex-1 cursor-pointer">
-              <input type="radio" name="origin" value="offered" className="peer sr-only" />
-              <span className="block rounded-xl border-2 border-gray-200 bg-white py-2.5 text-center text-sm font-extrabold peer-checked:border-amber-500 peer-checked:bg-amber-50 peer-checked:text-amber-700">
-                Offert — pilote
-              </span>
-            </label>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-              Référence du paiement reçu
-              <input
-                name="payment_ref"
-                maxLength={80}
-                placeholder="ex : MP240827.1432.A12345"
-                className="mt-1 w-full rounded-xl border-2 border-gray-200 bg-white px-3 py-2 text-sm font-bold text-ink"
-              />
-            </label>
-            <label className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-              Note
-              <input
-                name="note"
-                maxLength={200}
-                placeholder="facultatif"
-                className="mt-1 w-full rounded-xl border-2 border-gray-200 bg-white px-3 py-2 text-sm font-bold text-ink"
-              />
-            </label>
-          </div>
-
-          <button className="self-start rounded-2xl bg-mango px-5 py-3 text-sm font-extrabold text-[#3A2A00]">
-            Activer l&apos;abonnement
-          </button>
-          <p className="text-[11px] text-gray-400">
-            Obligatoire pour un abonnement payé : sans référence, l&apos;encaissement
-            serait intraçable. Une période offerte ne compte pas dans le revenu.
-          </p>
-        </form>
-      </div>
-
       {/* ===== V2 ===== */}
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div className="mt-7 grid gap-4 md:grid-cols-2">
         <div>
-          <h2 className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-            Comptes TikTok connectés
-          </h2>
-          <div className="rounded-2xl border border-gray-200 bg-white p-3 text-xs">
-            {identities.length === 0 && <p className="text-gray-400">Aucun compte connecté.</p>}
+          <h2 className="label-micro mb-2.5">Comptes TikTok connectés</h2>
+          <div className="card p-4 text-[12.5px]">
+            {identities.length === 0 && <p className="text-inkSoft">Aucun compte connecté.</p>}
             {identities.map((i) => (
-              <div key={`${i.username}-${i.seller_name}`} className="flex items-center gap-2 border-b border-gray-100 py-1.5 last:border-0">
+              <div
+                key={`${i.username}-${i.seller_name}`}
+                className="flex items-center gap-2 border-b border-ink/[0.06] py-2 last:border-0"
+              >
                 <b className="flex-1 truncate">@{i.username}</b>
-                <span className="tabular-nums text-gray-500">
+                <span className="tabular-nums text-inkSoft">
                   {i.follower_count.toLocaleString("fr-FR")} ab.
                 </span>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                  i.status === "active" ? "bg-emerald-50 text-okgreen" : "bg-red-50 text-red-500"
-                }`}>
+                <span
+                  className={`chip font-extrabold ${
+                    i.status === "active" ? "bg-emerald-50 text-okgreen" : "bg-red-50 text-red-500"
+                  }`}
+                >
                   {i.status === "active" ? "actif" : "révoqué"}
                 </span>
               </div>
@@ -398,20 +407,23 @@ export default async function AdminHome(
         </div>
 
         <div>
-          <h2 className="mb-2 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-            Webhooks TikTok
-          </h2>
-          <div className="rounded-2xl border border-gray-200 bg-white p-3 text-xs">
-            {webhookStats.length === 0 && <p className="text-gray-400">Aucun événement reçu.</p>}
+          <h2 className="label-micro mb-2.5">Webhooks TikTok</h2>
+          <div className="card p-4 text-[12.5px]">
+            {webhookStats.length === 0 && <p className="text-inkSoft">Aucun événement reçu.</p>}
             {webhookStats.map((w) => (
-              <div key={w.type} className="flex justify-between border-b border-gray-100 py-1.5 last:border-0">
+              <div
+                key={w.type}
+                className="flex justify-between border-b border-ink/[0.06] py-2 last:border-0"
+              >
                 <span className="font-semibold">{w.type}</span>
-                <span className="tabular-nums text-gray-500">{Number(w.n)}</span>
+                <span className="tabular-nums text-inkSoft">{Number(w.n)}</span>
               </div>
             ))}
-            <p className={`mt-2 text-[11px] font-bold ${
-              Number(unprocessed?.n ?? 0) > 0 ? "text-amber-700" : "text-okgreen"
-            }`}>
+            <p
+              className={`mt-3 text-[11.5px] font-bold ${
+                Number(unprocessed?.n ?? 0) > 0 ? "text-amber-700" : "text-okgreen"
+              }`}
+            >
               {Number(unprocessed?.n ?? 0) > 0
                 ? `⚠ ${Number(unprocessed?.n)} événement(s) non traité(s)`
                 : "✓ Tous les événements traités"}
@@ -420,25 +432,28 @@ export default async function AdminHome(
         </div>
       </div>
 
-      <h2 className="mb-2 mt-6 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-        Modération des avis
-      </h2>
-      <div className="rounded-2xl border border-gray-200 bg-white p-3 text-xs">
-        {flaggedReviews.length === 0 && <p className="text-gray-400">Aucun avis déposé.</p>}
+      <h2 className="label-micro mb-2.5 mt-7">Modération des avis</h2>
+      <div className="card p-4 text-[12.5px]">
+        {flaggedReviews.length === 0 && <p className="text-inkSoft">Aucun avis déposé.</p>}
         {flaggedReviews.map((r) => (
-          <div key={r.id} className="flex items-center gap-2 border-b border-gray-100 py-1.5 last:border-0">
-            <span className="w-24 shrink-0 truncate text-gray-500">{r.shop_name}</span>
-            <span className="text-[#E8A413]">{"★".repeat(r.rating ?? 0)}</span>
-            <span className="flex-1 truncate text-gray-600">{r.comment ?? "—"}</span>
+          <div
+            key={r.id}
+            className="flex items-center gap-2 border-b border-ink/[0.06] py-2 last:border-0"
+          >
+            <span className="w-24 shrink-0 truncate text-inkSoft">{r.shop_name}</span>
+            <span className="shrink-0 text-[#E8A413]">{"★".repeat(r.rating ?? 0)}</span>
+            <span className="min-w-0 flex-1 truncate">{r.comment ?? "—"}</span>
             {r.status === "hidden" && (
-              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-extrabold text-amber-700">
-                masqué
-              </span>
+              <span className="chip bg-amber-50 font-extrabold text-amber-700">masqué</span>
             )}
             <form method="post" action="/admin/actions">
               <input type="hidden" name="review" value={r.id} />
-              <input type="hidden" name="op" value={r.status === "hidden" ? "publish_review" : "hide_review"} />
-              <button className="rounded-full border border-gray-200 px-2.5 py-0.5 text-[10px] font-extrabold text-gray-500">
+              <input
+                type="hidden"
+                name="op"
+                value={r.status === "hidden" ? "publish_review" : "hide_review"}
+              />
+              <button className="chip border border-ink/10 font-extrabold text-inkSoft transition-transform active:scale-[0.97]">
                 {r.status === "hidden" ? "Republier" : "Masquer"}
               </button>
             </form>
@@ -446,20 +461,18 @@ export default async function AdminHome(
         ))}
       </div>
 
-      <h2 className="mb-2 mt-6 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
-        Journal d&apos;audit
-      </h2>
-      <div className="rounded-2xl border border-gray-200 bg-white p-3 text-xs">
-        {logs.length === 0 && <p className="text-gray-400">Aucune action enregistrée.</p>}
+      <h2 className="label-micro mb-2.5 mt-7">Journal d&apos;audit</h2>
+      <div className="card overflow-x-auto p-4 text-[12px]">
+        {logs.length === 0 && <p className="text-inkSoft">Aucune action enregistrée.</p>}
         {logs.map((l) => (
-          <div key={l.id} className="flex gap-3 border-b border-gray-100 py-1.5 last:border-0">
-            <span className="w-36 shrink-0 tabular-nums text-gray-400">{l.at}</span>
+          <div key={l.id} className="flex gap-3 border-b border-ink/[0.06] py-2 last:border-0">
+            <span className="w-36 shrink-0 tabular-nums text-inkSoft">{l.at}</span>
             <span className="w-40 shrink-0 font-bold">{l.actor}</span>
             <span className="font-semibold text-indigo9">{l.action}</span>
-            <span className="truncate text-gray-500">{l.target}</span>
+            <span className="truncate text-inkSoft">{l.target}</span>
           </div>
         ))}
       </div>
-    </main>
+    </AdminShell>
   );
 }

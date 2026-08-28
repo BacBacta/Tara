@@ -1,31 +1,39 @@
+import Alert from "@/components/Alert";
+import { Wordmark } from "@/components/Wordmark";
+import { inputCls } from "@/components/ob-styles";
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminLogin(props: { searchParams: Promise<{ err?: string }> }) {
   const searchParams = await props.searchParams;
   return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6">
-      <h1 className="text-lg font-extrabold">Tara — Administration</h1>
-      {searchParams.err && (
-        <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
-          Identifiants incorrects.
-        </p>
-      )}
-      <form method="post" action="/admin/login/check" className="mt-5 flex flex-col gap-3">
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 pb-16">
+      <Wordmark className="text-[19px]" />
+      <h1 className="mt-4 font-display text-[23px] leading-tight tracking-tight">
+        Administration
+      </h1>
+      <p className="mt-1.5 text-[13px] text-inkSoft">Réservé à l&apos;équipe Tara.</p>
+
+      {searchParams.err && <Alert className="mt-5">Identifiants incorrects.</Alert>}
+
+      <form method="post" action="/admin/login/check" className="mt-6 flex flex-col gap-3">
         <input
           name="email"
           type="email"
           placeholder="admin@tara.shop"
+          autoComplete="username"
           required
-          className="rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-bold focus:border-indigo9 focus:outline-none"
+          className={`${inputCls} mt-0`}
         />
         <input
           name="password"
           type="password"
           placeholder="Mot de passe"
+          autoComplete="current-password"
           required
-          className="rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-bold focus:border-indigo9 focus:outline-none"
+          className={`${inputCls} mt-0`}
         />
-        <button className="rounded-2xl bg-indigo9 px-5 py-3.5 text-sm font-extrabold text-white">
+        <button className="btn mt-2 bg-indigo9 py-4 text-white shadow-card active:shadow-none">
           Se connecter
         </button>
       </form>
