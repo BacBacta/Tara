@@ -1,14 +1,27 @@
 // Crée ou met à jour un administrateur :
 //   node scripts/create-admin.mjs <email> <motdepasse>
 //
+// Sur un hébergement sans shell (Vercel), il n'y a personne pour taper cette
+// commande : le compte se crée alors AU BUILD, à partir de ADMIN_EMAIL et
+// ADMIN_PASSWORD. Sans arguments ni variables, le script ne fait rien et
+// rend la main — il peut donc rester dans la commande de build sans risque.
+//
 // Fonctionne sur SQLite (développement) et PostgreSQL (production), le
 // dialecte étant déduit de DATABASE_URL — comme scripts/migrate.mjs.
 import { randomBytes, scryptSync } from "node:crypto";
 import { isPostgresUrl } from "./sql-portable.mjs";
 
-const [email, password] = process.argv.slice(2);
+const [emailArg, passwordArg] = process.argv.slice(2);
+const email = emailArg ?? process.env.ADMIN_EMAIL;
+const password = passwordArg ?? process.env.ADMIN_PASSWORD;
+
+if (!emailArg && !email && !password) {
+  console.log("Aucun administrateur à créer (ni arguments, ni ADMIN_EMAIL/ADMIN_PASSWORD).");
+  process.exit(0);
+}
 if (!email || !password) {
   console.error("Usage: node scripts/create-admin.mjs <email> <motdepasse>");
+  console.error("   ou : ADMIN_EMAIL et ADMIN_PASSWORD dans l'environnement.");
   process.exit(1);
 }
 if (password.length < 12) {

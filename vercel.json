@@ -1,0 +1,5 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run db:migrate && node scripts/create-admin.mjs && next build",
+  "regions": ["fra1"]
+}
