@@ -5,9 +5,9 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-28, fin du lot 5.
+**Dernière mise à jour** : 2026-08-28, fin du lot 6.
 **État du code** : V1+V2 complets, fournisseurs simulés, base SQLite.
-107 tests SQLite + 8 tests PostgreSQL, build sans erreur.
+128 tests SQLite + 8 tests PostgreSQL, build sans erreur.
 
 ---
 
@@ -44,7 +44,8 @@ décidé et ce qui reste à trancher.
       `deploy.sh` qui ne redémarre jamais sur migration échouée, sauvegarde et
       restauration **exécutées** contre PostgreSQL, sonde `/api/sante`.
       Fichiers produits, **aucun serveur contacté** : c'est MIKE qui exécute.
-- [ ] **Lot 6 — Le pré-vol** — `scripts/preflight.mjs`, checklist humaine.
+- [x] **Lot 6 — Le pré-vol** — `scripts/preflight.mjs` branché dans
+      `deploy.sh` avant le redémarrage, checklist humaine au README.
 - [ ] **Lot 7 — Mesurer le pilote** — écran admin « Pilote », 4 chiffres.
 
 ### Lots conditionnés (après le pilote — ne pas démarrer sans décision de MIKE)
@@ -86,6 +87,10 @@ décidé et ce qui reste à trancher.
 | 2026-08-28 | Lot 5 : `StartLimitBurst` / `StartLimitIntervalSec` placés dans `[Unit]`. | Depuis systemd 229 ces clés sont ignorées dans `[Service]`. Détecté par `systemd-analyze verify`. |
 | 2026-08-28 | Lot 5 : **pas** de fermeture explicite du pool PostgreSQL sur SIGTERM. | Question ouverte n°4 du lot 4, tranchée : fermer le pool pendant que Next draine ses requêtes en cours les ferait échouer. À l'arrêt, le processus meurt et PostgreSQL récupère ses connexions — le problème était cosmétique. `TimeoutStopSec=30` laisse Next drainer. |
 | 2026-08-28 | Lot 5 : surveillance par service externe gratuit, pas par script local seul. | Si le VPS tombe entièrement, une alerte hébergée sur ce même VPS ne part jamais. |
+| 2026-08-28 | Lot 6 : **écart assumé avec le programme.** Un `PAYMENT_PROVIDER` ou `TIKTOK_PROVIDER` encore `mock` **avertit** au lieu de bloquer ; `OTP_PROVIDER` et `NOTIFY_PROVIDER` bloquent. | Appliqué à la lettre, R5 interdirait tout lancement : ces deux branchements dépendent de démarches explicitement reportées après le pilote (contrat agrégateur, app TikTok validée). Un OTP simulé, lui, permet de prendre le compte de n'importe quelle vendeuse. |
+| 2026-08-28 | Lot 6 : le mock de paiement **redevient bloquant** si au moins une boutique est en mode `agregateur`. | Contrôle piloté par les données plutôt que par une règle aveugle : c'est exactement le cas où des commandes passeraient en « payée » sans versement. |
+| 2026-08-28 | Lot 6 : `create-admin.mjs` rendu bi-dialecte. | **Manque du lot 4** : câblé sur better-sqlite3, il échouait sur PostgreSQL — or la procédure de déploiement du README l'exécute contre la production. Aucun administrateur n'aurait pu être créé. |
+| 2026-08-28 | Lot 6 : `seed.mjs` refuse PostgreSQL et `NODE_ENV=production`. | Ce script fait un `DELETE` sur toutes les tables : lancé par mégarde sur la production, il effacerait boutiques, commandes et abonnements. |
 | 2026-08-27 | Le tag `v1.0-mock` reste **local**. | L'environnement d'exécution refuse le push des refs de tags (branches acceptées). Action reportée à MIKE. |
 
 ---

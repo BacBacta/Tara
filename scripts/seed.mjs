@@ -2,6 +2,19 @@
 import Database from "better-sqlite3";
 import { randomBytes, scryptSync } from "node:crypto";
 
+// GARDE-FOU : ce script fait un DELETE sur toutes les tables. Le lancer par
+// mégarde sur la base de production effacerait boutiques, commandes et
+// abonnements. Il refuse donc de tourner ailleurs qu'en développement.
+if (process.env.NODE_ENV === "production") {
+  console.error("Refus : db:seed efface toutes les tables et NODE_ENV=production.");
+  process.exit(1);
+}
+if (/^postgres(ql)?:\/\//.test(process.env.DATABASE_URL ?? "")) {
+  console.error("Refus : db:seed vise une base PostgreSQL.");
+  console.error("Ce script est réservé au développement local sur SQLite.");
+  process.exit(1);
+}
+
 const url = process.env.DATABASE_URL ?? "file:./dev.db";
 const db = new Database(url.replace(/^file:/, ""));
 db.pragma("foreign_keys = ON");
