@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import QRCode from "qrcode";
 import { readSession } from "@/lib/session";
 import { getShopBySeller } from "@/lib/sellers";
-import { Dots } from "@/components/Onboarding";
+import { ObHeader } from "@/components/Onboarding";
 import CopyButton from "@/components/CopyButton";
 
 export const dynamic = "force-dynamic";
@@ -25,52 +25,66 @@ export default async function Etape4() {
   ];
 
   return (
-    <main className="mx-auto max-w-md px-6 pb-10 pt-8">
-      <Dots step={4} />
-      <div className="text-center">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 text-4xl">
+    <main className="mx-auto max-w-md px-5 pb-14 pt-5">
+      <ObHeader step={4} label="Terminé" />
+
+      <div className="mt-7 text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-3xl">
           🎉
         </div>
-        <h1 className="mt-3 text-xl font-extrabold">Ta boutique est en ligne !</h1>
-      </div>
-
-      <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-4 text-center">
-        <p className="break-all text-base font-extrabold text-indigo9">{displayLink}</p>
-        <p className="mt-1 text-xs text-gray-500">ton lien unique — il t&apos;appartient</p>
-        <CopyButton text={link} />
-        {/* QR généré côté serveur : aucun JS requis pour l'afficher */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={qr}
-          alt={`QR code de ${displayLink}`}
-          width={140}
-          height={140}
-          className="mx-auto mt-4 rounded-xl border border-gray-200"
-        />
-        <p className="mt-1 text-[11px] text-gray-400">
-          Montre ce QR en fin de vidéo ou en live
+        <h1 className="mt-4 font-display text-[26px] leading-[1.14] tracking-tight">
+          Ta boutique est en ligne
+        </h1>
+        <p className="mt-2 text-[14.5px] leading-relaxed text-inkSoft">
+          Il ne reste qu&apos;une chose à faire : partager ton lien.
         </p>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3">
-        {steps.map(([title, hint], i) => (
-          <div key={title} className="flex items-start gap-3 text-sm">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo9 text-[11px] font-extrabold text-white">
-              {i + 1}
-            </span>
-            <span>
-              <b>{title}</b>
-              <br />
-              <span className="text-gray-500">{hint}</span>
-            </span>
-          </div>
-        ))}
+      {/* Le lien est le produit de tout l'onboarding : il a droit à la même
+          carte que le numéro de paiement sur la fiche acheteuse. */}
+      <section className="grain mt-7 overflow-hidden rounded-3xl bg-gradient-to-br from-indigo9 via-indigoDeep to-indigoNight px-5 py-6 text-center text-white shadow-float">
+        <p className="text-[10.5px] font-extrabold uppercase tracking-micro text-white/50">
+          Ton lien
+        </p>
+        <p className="mt-2 select-all break-words font-display text-[19px] leading-snug tracking-tight">
+          {displayLink}
+        </p>
+        {/* QR généré côté serveur : aucun JS requis pour l'afficher */}
+        <div className="mx-auto mt-5 w-fit rounded-2xl bg-white p-2.5 shadow-card">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={qr}
+            alt={`QR code de ${displayLink}`}
+            width={140}
+            height={140}
+            className="block rounded-lg"
+          />
+        </div>
+        <p className="mt-3 text-[11.5px] text-white/55">
+          Montre ce QR en fin de vidéo ou en live
+        </p>
+      </section>
+
+      <div className="mt-4">
+        <CopyButton text={link} />
       </div>
 
-      <a
-        href="/app"
-        className="mt-6 block w-full rounded-2xl bg-mango px-5 py-4 text-center text-sm font-extrabold text-[#3A2A00]"
-      >
+      <ol className="card mt-7 divide-y divide-ink/[0.06] px-4">
+        {steps.map(([titre, aide], i) => (
+          <li key={titre} className="flex items-start gap-3 py-3.5">
+            <span className="mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo9 text-[11px] font-extrabold text-white">
+              {i + 1}
+            </span>
+            <span className="text-[13.5px] leading-relaxed">
+              <b>{titre}</b>
+              <br />
+              <span className="text-inkSoft">{aide}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+
+      <a href="/app" className="btn-ghost mt-6">
         Voir mon tableau de bord →
       </a>
     </main>

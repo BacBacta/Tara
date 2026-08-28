@@ -1,6 +1,9 @@
 "use client";
-// Étape 2 : le lien tara.shop/{slug} se génère en direct pendant la frappe.
+// Étape 2 : le lien tara.shop/{slug} s'écrit en direct pendant la frappe.
+// Confort strictement optionnel (R2) : sans JavaScript le champ reste
+// saisissable et l'aperçu montre l'exemple — il n'est jamais bloquant.
 import { useState } from "react";
+import { inputCls, labelCls } from "./ob-styles";
 
 function slugify(input: string): string {
   return input
@@ -13,10 +16,10 @@ function slugify(input: string): string {
 
 export default function NameSlugField({ host }: { host: string }) {
   const [name, setName] = useState("");
-  const slug = slugify(name) || "ma-boutique";
+  const slug = slugify(name);
   return (
     <>
-      <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
+      <label className={labelCls}>
         Nom de la boutique
         <input
           name="name"
@@ -26,12 +29,19 @@ export default function NameSlugField({ host }: { host: string }) {
           required
           minLength={3}
           maxLength={60}
-          className="mt-1.5 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-base font-bold focus:border-indigo9 focus:outline-none"
+          className={inputCls}
         />
       </label>
-      <p className="mt-2 flex items-center gap-1.5 break-all rounded-xl border-2 border-dashed border-indigo9 bg-white px-3.5 py-3 text-sm font-extrabold text-indigo9">
-        🔗 {host}/{slug}
-      </p>
+
+      {/* L'aperçu du lien : c'est la décision la plus durable de l'écran. */}
+      <div className="mt-3 rounded-2xl border border-dashed border-indigo9/35 bg-indigo9/[0.05] px-4 py-3.5">
+        <span className="text-[10.5px] font-extrabold uppercase tracking-micro text-indigo9/70">
+          Ton lien
+        </span>
+        <p className="mt-1 break-all font-display text-[15px] leading-snug tracking-tight text-indigo9">
+          {host}/<span className={slug ? "" : "text-indigo9/40"}>{slug || "ma-boutique"}</span>
+        </p>
+      </div>
     </>
   );
 }

@@ -1,13 +1,45 @@
+// Socle visuel de l'onboarding vendeuse.
+// Même vocabulaire que la page d'accueil et la vitrine : marque « tara. »,
+// titrage en police d'affichage, bouton mango en relief, ombres teintées.
+// Tout est du CSS : l'inscription est un parcours public, elle doit marcher
+// sans JavaScript (R2).
+
+const TOTAL = 4;
+
+export function Wordmark({ className = "" }: { className?: string }) {
+  return (
+    <span className={`font-display tracking-tight text-indigo9 ${className}`}>
+      tara<span className="text-mango">.</span>
+    </span>
+  );
+}
+
+/** Progression : les étapes faites et l'étape en cours sont pleines.
+ *  Décoratif — l'information est donnée en toutes lettres dans l'en-tête. */
 export function Dots({ step }: { step: 1 | 2 | 3 | 4 }) {
   return (
-    <div className="mb-4 flex gap-1.5">
-      {[1, 2, 3, 4].map((i) => (
+    <div aria-hidden className="flex gap-1.5">
+      {Array.from({ length: TOTAL }, (_, i) => (
         <span
           key={i}
-          className={`h-1.5 flex-1 rounded-full ${i <= step ? "bg-indigo9" : "bg-gray-200"}`}
+          className={`h-1 flex-1 rounded-full ${i < step ? "bg-indigo9" : "bg-ink/10"}`}
         />
       ))}
     </div>
+  );
+}
+
+export function ObHeader({ step, label }: { step: 1 | 2 | 3 | 4; label?: string }) {
+  return (
+    <>
+      <div className="mb-4 flex items-baseline justify-between">
+        <Wordmark className="text-[17px]" />
+        <span className="text-[10.5px] font-extrabold uppercase tracking-micro text-inkSoft">
+          {label ?? `Étape ${step} sur ${TOTAL}`}
+        </span>
+      </div>
+      <Dots step={step} />
+    </>
   );
 }
 
@@ -23,18 +55,39 @@ export function ObShell({
   children: React.ReactNode;
 }) {
   return (
-    <main className="mx-auto max-w-md px-6 pb-10 pt-8">
-      <Dots step={step} />
-      <h1 className="text-xl font-extrabold leading-snug">{title}</h1>
-      {subtitle && <p className="mt-1.5 text-sm text-gray-500">{subtitle}</p>}
-      <div className="mt-5">{children}</div>
+    <main className="mx-auto max-w-md px-5 pb-14 pt-5">
+      <ObHeader step={step} />
+      <h1 className="mt-6 text-balance font-display text-[26px] leading-[1.14] tracking-tight">
+        {title}
+      </h1>
+      {subtitle && (
+        <p className="mt-2.5 text-[14.5px] leading-relaxed text-inkSoft">{subtitle}</p>
+      )}
+      <div className="mt-7">{children}</div>
     </main>
   );
 }
 
-export const inputCls =
-  "mt-1.5 w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-base font-bold focus:border-indigo9 focus:outline-none";
-export const labelCls =
-  "block text-[11px] font-extrabold uppercase tracking-widest text-gray-500";
-export const ctaCls =
-  "mt-5 w-full rounded-2xl bg-mango px-5 py-4 text-sm font-extrabold text-[#3A2A00]";
+const TONES = {
+  erreur: "border-red-500/15 bg-red-50 text-red-600",
+  attention: "border-mango/30 bg-amber-50 text-amber-700",
+  info: "border-indigo9/20 bg-indigo9/[0.09] text-indigo9",
+} as const;
+
+export function ObAlert({
+  tone = "erreur",
+  children,
+}: {
+  tone?: keyof typeof TONES;
+  children: React.ReactNode;
+}) {
+  return (
+    <p
+      className={`mb-4 rounded-2xl border px-4 py-3 text-[13px] font-bold leading-snug ${TONES[tone]}`}
+    >
+      {children}
+    </p>
+  );
+}
+
+export { inputCls, labelCls, hintCls, ctaCls } from "./ob-styles";

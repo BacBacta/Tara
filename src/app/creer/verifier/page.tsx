@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ObShell, inputCls, labelCls, ctaCls } from "@/components/Onboarding";
+import { ObShell, ObAlert, inputCls, labelCls, hintCls, ctaCls } from "@/components/Onboarding";
 
 export const dynamic = "force-dynamic";
 
@@ -14,19 +14,14 @@ export default async function Verifier(
   return (
     <ObShell
       step={1}
-      title="Entre le code reçu 📲"
+      title="Entre le code reçu"
       subtitle={`Un code à 6 chiffres a été envoyé au ${phone.replace(/^237/, "")}.`}
     >
       {searchParams.d && (
-        <p className="mb-3 rounded-xl bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo9">
-          Mode démo — ton code de test : {searchParams.d}
-        </p>
+        <ObAlert tone="info">Mode démo — ton code de test : {searchParams.d}</ObAlert>
       )}
-      {searchParams.err && (
-        <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
-          Code incorrect ou expiré — réessaie.
-        </p>
-      )}
+      {searchParams.err && <ObAlert>Code incorrect ou expiré — réessaie.</ObAlert>}
+
       <form method="post" action="/creer/verifier/check">
         <input type="hidden" name="phone" value={phone} />
         <label className={labelCls}>
@@ -39,14 +34,20 @@ export default async function Verifier(
             maxLength={6}
             placeholder="000000"
             required
-            className={`${inputCls} text-center text-2xl tracking-[0.4em]`}
+            autoFocus
+            className={`${inputCls} py-4 text-center font-display text-[30px] tabular-nums tracking-[0.35em] placeholder:tracking-[0.35em]`}
           />
         </label>
+        <p className={hintCls}>Il est valable 10 minutes.</p>
         <button type="submit" className={ctaCls}>
           Vérifier →
         </button>
       </form>
-      <a href="/creer" className="mt-4 block text-center text-xs font-bold text-gray-500">
+
+      <a
+        href="/creer"
+        className="mt-5 block text-center text-[12.5px] font-bold text-inkSoft underline underline-offset-2"
+      >
         ← Changer de numéro
       </a>
     </ObShell>

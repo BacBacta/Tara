@@ -5,9 +5,9 @@ Mis à jour à la fin de **chaque** lot. Une session qui reprend le travail lit
 ce fichier en premier : il dit ce qui est fait, ce qui reste, ce qui a été
 décidé et ce qui reste à trancher.
 
-**Dernière mise à jour** : 2026-08-28 — programme terminé, relecture de sécurité faite, stockage des photos derrière une interface, + **affichage des photos branché**.
+**Dernière mise à jour** : 2026-08-28 — programme terminé, relecture de sécurité faite, photos stockées et affichées, adaptation 4G, + **refonte de l'onboarding vendeuse**.
 **État du code** : V1+V2 complets, Next 16.3.3 + React 19, fournisseurs simulés en dev, SQLite en dev / PostgreSQL prêt pour la prod.
-158 tests SQLite + 8 tests PostgreSQL, build sans erreur.
+200 tests SQLite + 8 tests PostgreSQL, build sans erreur.
 
 ---
 
@@ -117,6 +117,7 @@ décidé et ce qui reste à trancher.
 | 2026-08-28 | **Deuxième passe visuelle, direction « éditorial, produit d'abord »** (référence demandée : Shopify). Grille sans bordures en portrait 3:4, fiche article en 4:5 avec ligne vendeuse, état de stock et accordéons natifs `<details>` (zéro JS), cartes vidéo portées par la photo de leur article, en-tête réduit à un ruban de couleur — le produit est roi. Photos de démonstration remplacées par des **motifs wax générés en SVG**. | Le verdict « basique » venait de trois choses : le produit n'était pas roi, les images de démo criaient « placeholder », et il manquait les gestes d'un PDP e-commerce. Poids inchangé : 28 Ko gzip hors images, formulaires POST natifs vérifiés au curl. |
 | 2026-08-28 | **Adaptation 4G** (décision MIKE, invariant mis à jour dans `CLAUDE.md` : « 4G largement répandue mais irrégulière, forfait compté, 3G en repli »). Images **responsives** : trois tailles générées à l'envoi (800/560/320), `srcset` en grille et fiche, variante 320 seule dans les rails, préchargement du visuel principal (`react-dom preload`, zéro JS), cache `max-age=86400, stale-while-revalidate=604800` sur les photos. | La grille servait l'image de 800 px entière à des vignettes de 180 px — le vrai gâchis d'un forfait compté. 4G ne veut pas dire « dépenser plus » mais « dépenser juste ». |
 | 2026-08-28 | Troisième passe premium : bloc **« À la une »** (premier article en héros éditorial), note des avis sous le titre de la fiche (ancre `#avis`), **shimmer** de chargement en CSS pur avec `prefers-reduced-motion`, barre de statut du téléphone aux couleurs de la boutique (`generateViewport`). | Les gestes des thèmes Shopify haut de gamme, toujours sans un octet de JavaScript ajouté. |
+| 2026-08-28 | **L'onboarding vendeuse (`/creer`) passe au système visuel des parcours acheteuse** : socle `ObShell` partagé (marque « tara. », étape en toutes lettres, titrage Sora), champs et boutons repris du design system, écran final où le lien devient une carte indigo comme le numéro de paiement. Trois textes corrigés parce qu'ils ne disaient pas la vérité du code : le lien de boutique est **définitif** (rien ne permet de le changer), le code OTP vaut **10 minutes** (`OTP_TTL_MIN`), et `/creer` sert aussi de **porte de retour** pour une vendeuse déjà inscrite. | La vitrine était soignée, l'entonnoir qui crée les boutiques ne l'était pas : zéro token du design system dans `/creer`. C'est pourtant le premier contact d'une vendeuse avec Tara. Parcours vérifié de bout en bout **au curl, sans une ligne de JavaScript**. |
 | 2026-08-27 | Le tag `v1.0-mock` reste **local**. | L'environnement d'exécution refuse le push des refs de tags (branches acceptées). Action reportée à MIKE. |
 
 ---
@@ -289,6 +290,35 @@ pouce sur une page de 940 px. Revenir en arrière = deux classes CSS.
 Les pages légales rédigées au lot 3 **devront être relues par un humain**
 avant l'ouverture au public. Elles seront écrites de bonne foi, mais pas par
 un juriste, et elles engagent Tara au Cameroun.
+
+### 13. Les 178 Ko de JavaScript de Next — mesurés, à trancher
+
+Mesuré le 28/08/2026 sur le serveur de production local (`next start`,
+transfert réellement compressé) :
+
+| Page | HTML | JavaScript |
+|---|---|---|
+| `/creer` | 4 144 o | **178 281 o** |
+| `/nadia-friperie-237` (vitrine) | 6 797 o | **179 757 o** |
+
+Ce JavaScript est le socle de l'App Router (React + routeur). **Aucune page
+publique n'en a besoin pour fonctionner** : R2 impose qu'elles marchent sans
+lui, et c'est vérifié au curl à chaque lot. Il est donc, pour l'acheteuse,
+du poids pur.
+
+Deux nuances mesurées, qui évitent de dramatiser :
+- les fichiers sont servis en `Cache-Control: public, max-age=31536000,
+  immutable` : ils sont téléchargés **une fois par visiteuse et par
+  déploiement**, jamais à chaque page ;
+- toutes les pages partagent les mêmes fichiers : la deuxième page d'une
+  visite ne coûte que son HTML (4 à 7 Ko).
+
+Le coût réel est donc celui de la **toute première page** ouverte depuis
+TikTok — précisément le moment qui décide d'une vente. Réduire ce socle
+signifierait sortir de l'App Router pour les pages publiques : c'est une
+décision d'architecture, pas un réglage. **À trancher par MIKE**, avec les
+chiffres ci-dessus, si le coût des données devient un frein constaté pendant
+le pilote.
 
 ---
 
