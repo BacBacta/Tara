@@ -82,6 +82,23 @@ body {
     transform: rotate(45deg);
   }
 
+  /* Tableau du back-office : une seule définition pour toutes les colonnes */
+  .tbl {
+    @apply w-full text-left text-[12px];
+  }
+  .tbl thead {
+    @apply bg-sand text-[9.5px] uppercase tracking-micro text-inkSoft;
+  }
+  .tbl th {
+    @apply px-3 py-2.5 font-extrabold;
+  }
+  .tbl td {
+    @apply px-3 py-2.5;
+  }
+  .tbl tbody tr {
+    @apply border-t border-ink/[0.06];
+  }
+
   /* Puce d'information */
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold;
