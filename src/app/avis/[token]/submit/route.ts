@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { reviewInput, submitReview } from "@/lib/reviews";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
 
-export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ token: string }> }) {
+  const params = await props.params;
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   if (!rateLimit(`review:${clientIp(req.headers)}`, 20, 600).allowed) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });

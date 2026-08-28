@@ -14,7 +14,7 @@ import TikTokPixel from "@/components/TikTokPixel";
 export const dynamic = "force-dynamic";
 
 type SP = { v?: string; src?: string; variant?: string };
-type Props = { params: { slug: string; id: string }; searchParams: SP };
+type Props = { params: Promise<{ slug: string; id: string }>; searchParams: SP };
 
 const GRADS = [
   "from-[#FBE3D2] to-[#F2B98F]",
@@ -78,7 +78,8 @@ async function getData(slug: string, id: string) {
   return { shop, product, variants, taggedVideo, reviews, ratingAgg };
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const params = await props.params;
   const data = await getData(params.slug, params.id);
   if (!data) return {};
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
@@ -109,7 +110,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ProductPage({ params, searchParams }: Props) {
+export default async function ProductPage(props: Props) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const data = await getData(params.slug, params.id);
   if (!data || data.shop.suspended === 1) notFound();
   const { shop, product, variants, taggedVideo, reviews, ratingAgg } = data;
@@ -122,7 +125,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
     shopId: shop.id,
     productId: product.id,
     source: parseSource(searchParams),
-    userAgent: headers().get("user-agent"),
+    userAgent: (await headers()).get("user-agent"),
   });
 
   // variantes groupées par label ; sélection portée par ?variant=

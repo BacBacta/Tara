@@ -4,10 +4,8 @@ import { phoneCm } from "@/lib/payments";
 import { addAlert } from "@/lib/drops";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { slug: string; id: string } }
-) {
+export async function POST(req: NextRequest, props: { params: Promise<{ slug: string; id: string }> }) {
+  const params = await props.params;
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   if (!rateLimit(`alert:${clientIp(req.headers)}`, 10, 600).allowed) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });

@@ -13,12 +13,13 @@ const ERR_FR: Record<string, string> = {
   input: "Formulaire incomplet ou invalide.",
 };
 
-export default async function AdminHome({
-  searchParams,
-}: {
-  searchParams: { ok?: string; err?: string };
-}) {
-  const admin = requireAdmin();
+export default async function AdminHome(
+  props: {
+    searchParams: Promise<{ ok?: string; err?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const admin = await requireAdmin();
   const since30 = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 19).replace("T", " ");
 
   const shops = await db

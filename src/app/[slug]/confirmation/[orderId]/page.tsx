@@ -7,9 +7,10 @@ import TikTokPixel from "@/components/TikTokPixel";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: { slug: string; orderId: string } };
+type Props = { params: Promise<{ slug: string; orderId: string }> };
 
-export default async function ConfirmationPage({ params }: Props) {
+export default async function ConfirmationPage(props: Props) {
+  const params = await props.params;
   const order = await db
     .selectFrom("orders")
     .innerJoin("shops", "shops.id", "orders.shop_id")

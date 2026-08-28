@@ -4,11 +4,12 @@ import { checkUnsubToken, unfollow } from "@/lib/followers";
 
 export const dynamic = "force-dynamic";
 
-export default async function Desabo({
-  searchParams,
-}: {
-  searchParams: { s?: string; p?: string; t?: string };
-}) {
+export default async function Desabo(
+  props: {
+    searchParams: Promise<{ s?: string; p?: string; t?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { s: slug, p: phone, t: token } = searchParams;
   let done = false;
   if (slug && phone && token) {

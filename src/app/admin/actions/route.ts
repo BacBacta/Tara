@@ -15,7 +15,7 @@ const input = z.object({
 
 export async function POST(req: NextRequest) {
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-  const admin = readAdmin();
+  const admin = await readAdmin();
   if (!admin) return NextResponse.redirect(`${base}/admin/login`, 303);
 
   const form = await req.formData();

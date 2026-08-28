@@ -4,7 +4,8 @@ import AppNav from "@/components/AppNav";
 
 export const dynamic = "force-dynamic";
 
-export default async function AvisVendeuse({ searchParams }: { searchParams: { ok?: string } }) {
+export default async function AvisVendeuse(props: { searchParams: Promise<{ ok?: string }> }) {
+  const searchParams = await props.searchParams;
   const { shop } = await requireShop();
   const reviews = await db
     .selectFrom("reviews")

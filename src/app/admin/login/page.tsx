@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
-export default function AdminLogin({ searchParams }: { searchParams: { err?: string } }) {
+export default async function AdminLogin(props: { searchParams: Promise<{ err?: string }> }) {
+  const searchParams = await props.searchParams;
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6">
       <h1 className="text-lg font-extrabold">Tara — Administration</h1>
