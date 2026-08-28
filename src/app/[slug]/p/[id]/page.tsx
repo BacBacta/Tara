@@ -8,6 +8,7 @@ import { fcfa } from "@/lib/format";
 import { parseSource, recordVisit, keepAttribution } from "@/lib/track";
 import { tiktokVideoId } from "@/lib/whatsapp";
 import { canAcceptPayment } from "@/lib/payments";
+import { photosByProduct } from "@/lib/photos";
 import TikTokEmbed from "@/components/TikTokEmbed";
 import TikTokPixel from "@/components/TikTokPixel";
 
@@ -75,7 +76,9 @@ async function getData(slug: string, id: string) {
     .where("status", "=", "published")
     .executeTakeFirst();
 
-  return { shop, product, variants, taggedVideo, reviews, ratingAgg };
+  const photo = (await photosByProduct([product.id])).get(product.id) ?? null;
+
+  return { shop, product, photo, variants, taggedVideo, reviews, ratingAgg };
 }
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
@@ -115,7 +118,7 @@ export default async function ProductPage(props: Props) {
   const params = await props.params;
   const data = await getData(params.slug, params.id);
   if (!data || data.shop.suspended === 1) notFound();
-  const { shop, product, variants, taggedVideo, reviews, ratingAgg } = data;
+  const { shop, product, photo, variants, taggedVideo, reviews, ratingAgg } = data;
   const lang: Lang = normalizeLang(shop.seller_lang);
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   const attribution = keepAttribution(searchParams);
@@ -173,12 +176,26 @@ export default async function ProductPage(props: Props) {
         <b className="truncate text-sm">{product.name}</b>
       </div>
 
-      {/* visuel */}
-      <div
-        className={`flex h-56 items-center justify-center bg-gradient-to-br text-6xl ${GRADS[product.position % 4]}`}
-      >
-        🛍️
-      </div>
+      {/* visuel : la photo de la vendeuse si elle en a mis une */}
+      {photo ? (
+        // Image déjà en WebP 800 px : pas d'optimiseur, pas de JavaScript
+        // (R2). Chargement immédiat — c'est le visuel principal, celui qui
+        // décide de l'achat.
+        <img
+          src={photo}
+          alt={product.name}
+          width={800}
+          height={600}
+          decoding="async"
+          className="aspect-[4/3] w-full bg-sand object-cover"
+        />
+      ) : (
+        <div
+          className={`flex aspect-[4/3] items-center justify-center bg-gradient-to-br text-6xl ${GRADS[product.position % 4]}`}
+        >
+          🛍️
+        </div>
+      )}
 
       <section className="-mt-4 rounded-t-3xl border border-gray-200 bg-white px-4 pb-8 pt-5">
         <h1 className="text-lg font-extrabold leading-snug">{product.name}</h1>

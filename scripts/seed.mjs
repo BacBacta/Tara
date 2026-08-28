@@ -1,6 +1,9 @@
 // Seed réaliste : 2 boutiques de démo, articles, variantes, commandes, visites.
 import Database from "better-sqlite3";
 import { randomBytes, scryptSync } from "node:crypto";
+import { mkdirSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import sharp from "sharp";
 
 // GARDE-FOU : ce script fait un DELETE sur toutes les tables. Le lancer par
 // mégarde sur la base de production effacerait boutiques, commandes et
@@ -74,12 +77,16 @@ const products = [
 ];
 
 const prodIds = [];
+// Photos de démonstration : générées, jamais versionnées. Sans elles, les
+// boutiques de démo afficheraient des images cassées — pire qu'un dégradé.
+const demoPhotos = [];
 products.forEach(([shop, name, price, desc, video, variants], i) => {
   const pid = id();
   prodIds.push({ pid, shop, price });
   ins("products", { id: pid, shop_id: shop, name, price_fcfa: price,
     description: desc, video_url: video, position: i });
   ins("product_media", { id: id(), product_id: pid, url_webp: `/demo/p${i}.webp`, position: 0 });
+  demoPhotos.push({ index: i, name });
   for (const [label, value] of variants) ins("variants", { id: id(), product_id: pid, label, value });
 });
 
@@ -114,4 +121,30 @@ const adminHash = `${salt}:${scryptSync("tara2026", salt, 64).toString("hex")}`;
 ins("admin_users", { id: id(), email: "admin@tara.shop",
   password_hash: adminHash, role: "admin" });
 
-console.log("Seed OK — boutiques : nadia-friperie-237 et kev-sneakers");
+// --- photos de démonstration ---
+const demoDir = join(process.cwd(), "public", "demo");
+rmSync(demoDir, { recursive: true, force: true });
+mkdirSync(demoDir, { recursive: true });
+
+const TEINTES = ["#33418F", "#0E7C66", "#B45309", "#7C3AED", "#BE123C", "#1D4ED8"];
+const echappe = (t) =>
+  t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+for (const { index, name } of demoPhotos) {
+  const fond = TEINTES[index % TEINTES.length];
+  const titre = echappe(name.length > 28 ? `${name.slice(0, 27)}…` : name);
+  // Carrées : c'est le format des vignettes de la vitrine, donc aucun
+  // rognage sur la démo. Taille de police ajustée à la longueur du titre.
+  const taille = Math.min(46, Math.floor(700 / (titre.length * 0.58)));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800">
+    <rect width="800" height="800" fill="${fond}"/>
+    <rect x="0" y="782" width="800" height="18" fill="#F5A623"/>
+    <text x="400" y="400" text-anchor="middle" font-family="DejaVu Sans, sans-serif"
+          font-size="${taille}" font-weight="bold" fill="#FFFFFF">${titre}</text>
+    <text x="400" y="450" text-anchor="middle" font-family="DejaVu Sans, sans-serif"
+          font-size="24" fill="#FFFFFF" opacity="0.75">photo de démonstration</text>
+  </svg>`;
+  await sharp(Buffer.from(svg)).webp({ quality: 80 }).toFile(join(demoDir, `p${index}.webp`));
+}
+
+console.log(`Seed OK — boutiques : nadia-friperie-237 et kev-sneakers (${demoPhotos.length} photos de démo générées)`);

@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { t, normalizeLang, type Lang } from "@/lib/i18n";
 import { fcfa } from "@/lib/format";
+import { photosByProduct } from "@/lib/photos";
 import { parseSource, recordVisit, keepAttribution } from "@/lib/track";
 import TikTokPixel from "@/components/TikTokPixel";
 import { getShopIdentity } from "@/lib/identities";
@@ -37,6 +38,9 @@ async function getShop(slug: string) {
     .where("removed", "=", 0)
     .orderBy("position", "asc")
     .execute();
+
+  // Photos des articles : une seule requête pour toute la vitrine.
+  const photos = await photosByProduct(products.map((p) => p.id));
 
   // V2 : vidéos synchronisées avec au moins un article tagué
   const taggedVideos = await db
@@ -76,6 +80,7 @@ async function getShop(slug: string) {
     shop,
     // les articles réservés à un drop non ouvert sont masqués partout
     products: products.filter((p) => !locked.has(p.id)),
+    photos,
     taggedVideos: taggedVideos.filter((v) => !locked.has(v.product_id)),
     identity, nextDrop,
     salesCount: Number(sales?.n ?? 0),
@@ -120,7 +125,7 @@ export default async function ShopPage(props: Props) {
   const params = await props.params;
   const data = await getShop(params.slug);
   if (!data || data.shop.suspended === 1) notFound();
-  const { shop, products, taggedVideos, identity, nextDrop, salesCount } = data;
+  const { shop, products, photos, taggedVideos, identity, nextDrop, salesCount } = data;
   const lang: Lang = normalizeLang(shop.seller_lang);
   // V2 prioritaire : vidéos synchronisées + articles tagués ; sinon V1 (oEmbed manuel)
   const v2Videos = taggedVideos;
@@ -264,16 +269,32 @@ export default async function ShopPage(props: Props) {
             href={`/${shop.slug}/p/${p.id}${attr}`}
             className="overflow-hidden rounded-2xl border border-gray-200 bg-white"
           >
-            <div
-              className={`flex h-28 items-center justify-center text-4xl ${
-                ["bg-gradient-to-br from-[#FBE3D2] to-[#F2B98F]",
-                 "bg-gradient-to-br from-[#D9E6F6] to-[#A9C3E8]",
-                 "bg-gradient-to-br from-[#EFE0F6] to-[#CBAAE2]",
-                 "bg-gradient-to-br from-[#E0F0E4] to-[#A9D4B4]"][i % 4]
-              }`}
-            >
-              🛍️
-            </div>
+            {photos.get(p.id) ? (
+              // Photo déjà redimensionnée à 800 px en WebP à l'envoi : pas
+              // d'optimiseur à interroger, une simple balise <img> suffit et
+              // ne coûte aucun JavaScript (R2). width/height réservent la
+              // place pour éviter que la grille ne saute en 3G.
+              <img
+                src={photos.get(p.id)}
+                alt={p.name}
+                width={400}
+                height={400}
+                loading="lazy"
+                decoding="async"
+                className="aspect-square w-full bg-sand object-cover"
+              />
+            ) : (
+              <div
+                className={`flex aspect-square items-center justify-center text-4xl ${
+                  ["bg-gradient-to-br from-[#FBE3D2] to-[#F2B98F]",
+                   "bg-gradient-to-br from-[#D9E6F6] to-[#A9C3E8]",
+                   "bg-gradient-to-br from-[#EFE0F6] to-[#CBAAE2]",
+                   "bg-gradient-to-br from-[#E0F0E4] to-[#A9D4B4]"][i % 4]
+                }`}
+              >
+                🛍️
+              </div>
+            )}
             <p className="px-2.5 pt-2 text-xs font-bold leading-tight">{p.name}</p>
             <p className="px-2.5 pb-1 pt-0.5 text-sm font-extrabold text-indigo9">
               {fcfa(p.price_fcfa)}
