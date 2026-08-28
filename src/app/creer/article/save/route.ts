@@ -25,5 +25,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.redirect(`${base}/creer/article?err=1`, 303);
   }
   await createProduct(shop.id, parsed.data, form.get("photo"));
+  // (onboarding : la vendeuse revoit ses articles juste après, à l'étape suivante)
   return NextResponse.redirect(`${base}/creer/fini`, 303);
 }

@@ -25,6 +25,10 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.redirect(`${base}/app/articles?err=1`, 303);
   }
-  await createProduct(shop.id, parsed.data, form.get("photo"));
-  return NextResponse.redirect(`${base}/app/articles`, 303);
+  const res = await createProduct(shop.id, parsed.data, form.get("photo"));
+  // L'article est créé dans tous les cas ; si la photo n'a pas suivi, on le
+  // dit — sinon la vendeuse croit sa boutique à jour alors qu'il lui manque
+  // le seul élément qui fait vendre.
+  const suffixe = res.photo === "echec" ? "?photo=echec" : "";
+  return NextResponse.redirect(`${base}/app/articles${suffixe}`, 303);
 }
