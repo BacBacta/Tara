@@ -203,18 +203,31 @@ export async function renouvellements(
 export async function agentsObserves(
   dbi: Kysely<DB> = defaultDb,
   limite = 12
-): Promise<{ agent: string; canal: string; visites: number }[]> {
+): Promise<{ agent: string; canal: string; source: string; visites: number }[]> {
   const rows = await dbi
     .selectFrom("visits")
-    .select(["user_agent", "channel"])
+    .select(["user_agent", "channel", "source"])
     .where("created_at", ">", ilYA(30))
     .execute();
 
-  const compte = new Map<string, { agent: string; canal: string; visites: number }>();
+  const compte = new Map<
+    string,
+    { agent: string; canal: string; source: string; visites: number }
+  >();
   for (const r of rows) {
-    const agent = (r.user_agent ?? "(aucun)").slice(0, 90);
-    const cle = `${agent}|${r.channel ?? "?"}`;
-    const cur = compte.get(cle) ?? { agent, canal: r.channel ?? "(avant lot 7)", visites: 0 };
+    // Le user agent est affiché ENTIER (la colonne en stocke 250 caractères).
+    // Il était coupé à 90 : or les marqueurs d'un navigateur intégré —
+    // « BytedanceWebview », « musical_ly » — arrivent à la FIN de la chaîne.
+    // Le tableau censé vérifier l'heuristique effaçait donc sa propre preuve.
+    const agent = r.user_agent ?? "(aucun)";
+    const source = r.source ?? "direct";
+    const cle = `${agent}|${r.channel ?? "?"}|${source}`;
+    const cur = compte.get(cle) ?? {
+      agent,
+      canal: r.channel ?? "(avant lot 7)",
+      source,
+      visites: 0,
+    };
     cur.visites++;
     compte.set(cle, cur);
   }

@@ -214,6 +214,7 @@ export default async function Pilote() {
             <thead className="bg-transparent">
               <tr>
                 <th>Navigateur</th>
+                <th>Venue par</th>
                 <th>Classé</th>
                 <th className="text-right">Visites</th>
               </tr>
@@ -221,14 +222,19 @@ export default async function Pilote() {
             <tbody>
               {agents.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="text-inkSoft">
+                  <td colSpan={4} className="text-inkSoft">
                     Aucune visite sur 30 jours.
                   </td>
                 </tr>
               )}
               {agents.map((a) => (
-                <tr key={`${a.agent}-${a.canal}`} className="border-t border-mango/20">
-                  <td className="font-mono text-[11px]">{a.agent}</td>
+                <tr key={`${a.agent}-${a.canal}-${a.source}`} className="border-t border-mango/20">
+                  {/* affiché en entier, et coupable à la souris : c'est la
+                      seule preuve dont on dispose sur un vrai téléphone */}
+                  <td className="max-w-[26rem] break-all font-mono text-[10.5px] leading-relaxed">
+                    {a.agent}
+                  </td>
+                  <td className="whitespace-nowrap text-[11px] text-inkSoft">{a.source}</td>
                   <td>
                     <span
                       className={`chip font-extrabold ${

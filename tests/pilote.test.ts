@@ -184,4 +184,28 @@ describe("les quatre chiffres du pilote", () => {
     expect(r.find((a) => a.canal === "tiktok")?.agent).toContain("Bytedance");
     expect(r.some((a) => a.canal === "autre")).toBe(true);
   });
+
+  it("n'ampute pas le user agent — les marqueurs sont à la FIN", async () => {
+    // Le tableau était coupé à 90 caractères. Or « BytedanceWebview » et
+    // « musical_ly » arrivent après le préfixe Chrome, à plus de 90
+    // caractères : l'écran censé vérifier l'heuristique effaçait sa preuve.
+    const ua =
+      "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) " +
+      "Chrome/151.0.0.0 Mobile Safari/537.36 BytedanceWebview/d8a21c6 musical_ly_2026";
+    expect(ua.length).toBeGreaterThan(90);
+
+    await db.insertInto("shops").values({
+      id: "sh-ua", seller_id: "s1", slug: "ua", name: "UA", city: "Douala",
+    }).execute();
+    await db.insertInto("visits").values({
+      id: "v-ua", shop_id: "sh-ua", product_id: null, source: "src:bio",
+      user_agent: ua, channel: "tiktok", created_at: ilYA(1),
+    }).execute();
+
+    const ligne = (await agentsObserves(db)).find((a) => a.agent.startsWith("Mozilla/5.0 (Linux; Android 10"));
+    expect(ligne?.agent).toBe(ua);
+    expect(ligne?.agent).toContain("BytedanceWebview");
+    // et l'on voit par où la visite est arrivée
+    expect(ligne?.source).toBe("src:bio");
+  });
 });
